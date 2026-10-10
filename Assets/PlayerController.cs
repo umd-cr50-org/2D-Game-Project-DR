@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-Header ("Horizontal Movement Settings")
+    [Header ("Horizontal Movement Settings")]
     private Rigidbody2D rb;
 
 [SerializeField] private float walkspeed = 5;
