@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
 
     [Header ("Vertical Movement Settings")]
     [SerializeField] private float jumpForce = 15;
+    [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.4f;
     [SerializeField] private int maxJumps = 2; // 2 = normal jump + one double jump
     private int jumpsRemaining;
     private bool isGrounded;
@@ -44,6 +45,13 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && rb.linearVelocity.y <= 0.01f)
         {
             jumpsRemaining = maxJumps;
+        }
+
+        if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f)
+        {
+            rb.linearVelocity = new Vector2(
+                rb.linearVelocity.x,
+                rb.linearVelocity.y * jumpCutMultiplier);
         }
 
         if (Input.GetButtonDown("Jump") && jumpsRemaining > 0)
