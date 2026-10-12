@@ -14,7 +14,7 @@ public class PlayerController : MonoBehaviour
     private int jumpsRemaining;
     private bool isGrounded;
 
-    PlayerController Instance;
+    public static PlayerController Instance;
 
 
     private void Awake()
