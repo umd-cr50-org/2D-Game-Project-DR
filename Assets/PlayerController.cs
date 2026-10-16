@@ -10,6 +10,23 @@ public class PlayerController : MonoBehaviour
     Animator anim;
     SpriteRenderer sr;
 
+    [Header ("Dash Settings")]
+    [SerializeField] private float dashDistance = 2f; // how far the warp carries the player, in units
+    [SerializeField] private float dashWindup = 0.3f; // the "throw": player holds still this long before warping
+    [SerializeField] private float dashTravelTime = 0.1f; // how long the warp takes to cover dashDistance
+    [SerializeField] private float dashCooldown = 2f;
+    [SerializeField] private float doubleTapWindow = 1.0f; // max time between taps
+    private bool isDashing;
+    private bool isDashMoving;
+    private float dashDirection;
+    private float dashMoveStartTime;
+    private float dashStartX;
+    private float nextDashTime;
+    private float defaultGravityScale;
+    private float lastTapTime = -1f;
+    private float lastTapDirection;
+    private float previousXAxis;
+
     [Header ("Vertical Movement Settings")]
     [SerializeField] private float jumpForce = 15;
     [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.4f;
@@ -39,6 +56,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
         rb.freezeRotation = true; // keep the player upright on collisions
+        defaultGravityScale = rb.gravityScale;
         jumpsRemaining = maxJumps;
         anim = GetComponent<Animator>();
         sr = GetComponentInChildren<SpriteRenderer>();
@@ -53,8 +71,12 @@ public class PlayerController : MonoBehaviour
     {
         GetInputs();
         CheckGrounded();
-        Move();
-        Jump();
+        Dash();
+        if (!isDashing)
+        {
+            Move();
+            Jump();
+        }
     }
     void GetInputs()
     {
@@ -66,6 +88,84 @@ public class PlayerController : MonoBehaviour
            rb.linearVelocity = new Vector2(xAxis * walkspeed, rb.linearVelocity.y);
            anim.SetBool("Walking", rb.linearVelocity.x != 0 && isGrounded);
            Flip();
+    }
+
+    // Double-tap left or right to warp that way: hold still for the throw, then shoot forward dashDistance.
+    // Cooldown starts when the dash ends.
+    private void Dash()
+    {
+        // A "tap" is the frame the horizontal input goes from released to pressed
+        float tapDirection = 0f;
+        if (xAxis != 0 && previousXAxis == 0)
+        {
+            tapDirection = Mathf.Sign(xAxis);
+        }
+        previousXAxis = xAxis;
+
+        if (tapDirection != 0)
+        {
+            bool isDoubleTap = tapDirection == lastTapDirection
+                && Time.time - lastTapTime <= doubleTapWindow;
+
+            if (isDoubleTap && !isDashing && Time.time >= nextDashTime)
+            {
+                isDashing = true;
+                isDashMoving = false;
+                dashDirection = tapDirection;
+                dashMoveStartTime = Time.time + dashWindup;
+                rb.gravityScale = 0f; // hang in place for the throw and the warp
+                sr.flipX = dashDirection > 0; // flipX is set when facing right
+                anim.SetBool("Dashing", true);
+                lastTapTime = -1f; // a third tap shouldn't count as another double tap
+            }
+            else
+            {
+                lastTapTime = Time.time;
+                lastTapDirection = tapDirection;
+            }
+        }
+
+        if (!isDashing)
+        {
+            return;
+        }
+
+        // Wind-up: the throw part of the animation, player stays put
+        if (Time.time < dashMoveStartTime)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
+        if (!isDashMoving)
+        {
+            isDashMoving = true;
+            dashStartX = rb.position.x;
+        }
+
+        // Stop once we've covered the distance, or if a wall has held us up for too long
+        float remaining = dashDistance - Mathf.Abs(rb.position.x - dashStartX);
+        bool blocked = Time.time >= dashMoveStartTime + dashTravelTime * 2f;
+        if (remaining <= 0.01f || blocked)
+        {
+            EndDash();
+            return;
+        }
+
+        // Slow down on the last physics step so we land on dashDistance instead of overshooting it
+        float warpSpeed = dashDistance / dashTravelTime;
+        float speed = Mathf.Min(warpSpeed, remaining / Time.fixedDeltaTime);
+        rb.linearVelocity = new Vector2(dashDirection * speed, 0f);
+    }
+
+    private void EndDash()
+    {
+        isDashing = false;
+        isDashMoving = false;
+        rb.gravityScale = defaultGravityScale;
+        rb.linearVelocity = Vector2.zero;
+        nextDashTime = Time.time + dashCooldown;
+        anim.SetBool("Dashing", false);
     }
 
     // Face the direction of input; keep the last facing when there's no input

@@ -4450,6 +4450,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   walkspeed: 31.7
+  dashDistance: 30
+  dashWindup: 0.5
+  dashTravelTime: 1
+  dashCooldown: 2
+  doubleTapWindow: 1
   jumpForce: 40.2
   jumpCutMultiplier: 0.4
   maxJumps: 2
