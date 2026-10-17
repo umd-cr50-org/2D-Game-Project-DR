@@ -4282,6 +4282,7 @@ GameObject:
   - component: {fileID: 1690322783}
   - component: {fileID: 1690322784}
   - component: {fileID: 1690322785}
+  - component: {fileID: 1690322786}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -4404,8 +4405,8 @@ Transform:
   m_GameObject: {fileID: 1690322778}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.58, y: -3.3, z: 0}
-  m_LocalScale: {x: 8.190001, y: 7.75127, z: 0}
+  m_LocalPosition: {x: 0.05, y: -5.32, z: 0}
+  m_LocalScale: {x: 8.082999, y: 7.6500006, z: 0}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -4498,6 +4499,50 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1690322786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9c571eb02e69214a830e828c7527deb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAttack
+  attackKey: 122
+  attacks:
+  - name: Attack 1
+    clip: {fileID: 0}
+    matchClipLength: 1
+    duration: 2
+    playbackSpeed: 1
+    cancelPoint: 1
+    comboWindow: 1
+  - name: Attack 2
+    clip: {fileID: 0}
+    matchClipLength: 1
+    duration: 2
+    playbackSpeed: 1
+    cancelPoint: 1
+    comboWindow: 1
+  - name: Attack 3
+    clip: {fileID: 0}
+    matchClipLength: 1
+    duration: 2
+    playbackSpeed: 1
+    cancelPoint: 1
+    comboWindow: 0.3
+  - name: Attack 4 (finisher)
+    clip: {fileID: 0}
+    matchClipLength: 1
+    duration: 2
+    playbackSpeed: 1
+    cancelPoint: 1
+    comboWindow: 0.3
+  comboCooldown: 0.35
+  logTiming: 0
 --- !u!1 &1755212591
 GameObject:
   m_ObjectHideFlags: 0

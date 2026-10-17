@@ -36,7 +36,11 @@ public class PlayerController : MonoBehaviour
     private bool isDoubleJumping;
     private ContactFilter2D groundFilter;
 
+    private PlayerAttack attack;
+
     public static PlayerController Instance;
+    public bool IsDashing => isDashing;
+    private bool IsAttacking => attack != null && attack.IsAttacking;
 
 
     private void Awake()
@@ -60,6 +64,7 @@ public class PlayerController : MonoBehaviour
         jumpsRemaining = maxJumps;
         anim = GetComponent<Animator>();
         sr = GetComponentInChildren<SpriteRenderer>();
+        attack = GetComponent<PlayerAttack>();
 
         // Only contacts whose normal points up (within 45 degrees) count as ground
         groundFilter.useTriggers = false;
@@ -72,7 +77,12 @@ public class PlayerController : MonoBehaviour
         GetInputs();
         CheckGrounded();
         Dash();
-        if (!isDashing)
+        if (IsAttacking)
+        {
+            // Rooted in place for each hit, like a jab; gravity still applies
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+        }
+        else if (!isDashing)
         {
             Move();
             Jump();
@@ -107,7 +117,7 @@ public class PlayerController : MonoBehaviour
             bool isDoubleTap = tapDirection == lastTapDirection
                 && Time.time - lastTapTime <= doubleTapWindow;
 
-            if (isDoubleTap && !isDashing && Time.time >= nextDashTime)
+            if (isDoubleTap && !isDashing && !IsAttacking && Time.time >= nextDashTime)
             {
                 isDashing = true;
                 isDashMoving = false;
