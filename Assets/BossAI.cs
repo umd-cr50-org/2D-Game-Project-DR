@@ -17,6 +17,7 @@ using UnityEngine.Serialization;
 //                gap in dash range                     -> dash at the player to close the distance
 //                farther                               -> walk at them; jump up ledges / when stuck
 //   Cooldown - after EVERY attack (strings and magic) the boss does nothing for actionCooldown seconds.
+//   Phase 2  - below phase2At health it waits less between attacks and moves faster.
 [DefaultExecutionOrder(-100)]
 [RequireComponent(typeof(PlayerController), typeof(PlayerAttack), typeof(Rigidbody2D))]
 public class BossAI : CharacterInput
@@ -82,7 +83,20 @@ public class BossAI : CharacterInput
     [Tooltip("...for at least this long.")]
     [SerializeField] private float runningTime = 0.4f;
 
+    [Header ("Phase 2 (needs a Health on the boss)")]
+    [Tooltip("Phase 2 starts when the boss's health drops to this fraction (0.5 = half).")]
+    [SerializeField, Range(0f, 1f)] private float phase2At = 0.5f;
+    [Tooltip("In phase 2 the wait after each attack is multiplied by this (0.5 = half as long).")]
+    [SerializeField] private float phase2CooldownMultiplier = 0.5f;
+    [Tooltip("In phase 2 Walk Speed is multiplied by this.")]
+    [SerializeField] private float phase2SpeedMultiplier = 1.25f;
+
     [SerializeField] private bool logDecisions; // prints what the boss decides to the Console
+
+    public bool InPhase2 { get; private set; }
+    public float Phase2At => phase2At;
+    public event System.Action EnteredPhase2;
+    private float ActionCooldown => actionCooldown * (InPhase2 ? phase2CooldownMultiplier : 1f);
 
     // This frame's "button presses" (read by PlayerController / PlayerAttack after this script runs)
     private float horizontal;
@@ -118,6 +132,8 @@ public class BossAI : CharacterInput
     private PlayerController target;
     private Collider2D targetCollider;
     private Rigidbody2D targetRb;
+    private Health targetHealth;
+    private Health health;
 
     public override bool MagicPressed => magicPressed;
     private bool PlayerIsRunning => runningSince >= 0f && Time.time - runningSince >= runningTime;
@@ -141,6 +157,12 @@ public class BossAI : CharacterInput
             body.MatchMovement(PlayerController.Instance);
         }
         body.WalkSpeed = walkSpeed;
+
+        health = GetComponent<Health>();
+        if (health != null)
+        {
+            health.Changed += OnHealthChanged;
+        }
         body.SetBodyAnimations(groundAnimation, runAnimation, airAnimation);
     }
 
@@ -152,9 +174,19 @@ public class BossAI : CharacterInput
         attackPressed = false;
         dashDirection = 0;
         magicPressed = false;
-        body.WalkSpeed = walkSpeed; // so Walk Speed can be tuned live in Play mode
+        body.WalkSpeed = walkSpeed * (InPhase2 ? phase2SpeedMultiplier : 1f); // so Walk Speed can be tuned live in Play mode
+
+        // Defeated or game paused: no actions
+        if ((health != null && health.IsDead) || Time.timeScale == 0f)
+        {
+            return;
+        }
 
         if (!MeasurePlayer())
+        {
+            return;
+        }
+        if (targetHealth != null && targetHealth.IsDead) // the player is down: the fight is over
         {
             return;
         }
@@ -205,6 +237,7 @@ public class BossAI : CharacterInput
             target = PlayerController.Instance;
             targetCollider = target != null ? target.GetComponent<Collider2D>() : null;
             targetRb = target != null ? target.GetComponent<Rigidbody2D>() : null;
+            targetHealth = target != null ? target.GetComponent<Health>() : null;
             if (caster != null && target != null)
             {
                 caster.AimTarget = target.transform; // spells fly at the player
@@ -383,7 +416,7 @@ public class BossAI : CharacterInput
         // String over: every attack is followed by the cooldown
         if (attackStarted && pressesLeft == 0 && !attack.IsAttacking)
         {
-            timer = Time.time + actionCooldown;
+            timer = Time.time + ActionCooldown;
             SetState(State.Cooldown);
         }
     }
@@ -403,7 +436,7 @@ public class BossAI : CharacterInput
         // Spell finished: magic is an attack too, so the cooldown follows
         if (castStarted && !caster.IsCasting)
         {
-            timer = Time.time + actionCooldown;
+            timer = Time.time + ActionCooldown;
             SetState(State.Cooldown);
         }
     }
@@ -419,6 +452,16 @@ public class BossAI : CharacterInput
         else if (runningSince < 0f)
         {
             runningSince = Time.time;
+        }
+    }
+
+    private void OnHealthChanged(Health h)
+    {
+        if (!InPhase2 && !h.IsDead && h.Fraction <= phase2At)
+        {
+            InPhase2 = true;
+            Log("Phase 2");
+            EnteredPhase2?.Invoke();
         }
     }
 

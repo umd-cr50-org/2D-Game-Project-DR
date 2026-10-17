@@ -93,7 +93,7 @@ public class MagicCaster : MonoBehaviour
 
     private bool CanStartCast()
     {
-        return IsReady && !body.IsDashing && !body.IsFreeFalling && (attack == null || !attack.IsAttacking);
+        return IsReady && body.CanAct && !body.IsDashing && !body.IsFreeFalling && (attack == null || !attack.IsAttacking);
     }
 
     private void StartCast()
@@ -117,6 +117,17 @@ public class MagicCaster : MonoBehaviour
                 anim.Play(stateHash, 0, 0f);
             }
         }
+    }
+
+    // Called by PlayerController when the character is hit or defeated: the spell is lost if it hasn't fired yet
+    public void Interrupt()
+    {
+        if (!IsCasting)
+        {
+            return;
+        }
+        IsCasting = false;
+        body.SetAnimBool("Casting", false);
     }
 
     // Fires the spell. Called automatically after castTime, or by an Animation Event on the cast animation.

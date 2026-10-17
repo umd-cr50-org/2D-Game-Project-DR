@@ -419,8 +419,8 @@ Transform:
   m_GameObject: {fileID: 57464418}
   serializedVersion: 2
   m_LocalRotation: {x: 0.010166659, y: -0.002216114, z: -0.3974369, w: 0.9175705}
-  m_LocalPosition: {x: 165.9, y: -51, z: 0.1}
-  m_LocalScale: {x: 8.172172, y: 59.37445, z: 1.9381574}
+  m_LocalPosition: {x: 165.98, y: -51.09, z: 0.1}
+  m_LocalScale: {x: 6.388105, y: 59.37445, z: 1.9381574}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1733,6 +1733,7 @@ GameObject:
   - component: {fileID: 582222799}
   - component: {fileID: 582222798}
   - component: {fileID: 582222797}
+  - component: {fileID: 582222800}
   m_Layer: 0
   m_Name: Boss
   m_TagString: Untagged
@@ -1945,6 +1946,9 @@ MonoBehaviour:
   magicOnlyWhenRunning: 1
   runningSpeed: 15
   runningTime: 0.4
+  phase2At: 0.5
+  phase2CooldownMultiplier: 0.5
+  phase2SpeedMultiplier: 1.25
   logDecisions: 0
 --- !u!114 &582222798
 MonoBehaviour:
@@ -2052,6 +2056,25 @@ MonoBehaviour:
   freeFallDriftMultiplier: 0.6
   freeFallTint: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   slideOffCharacterSpeed: 25
+--- !u!114 &582222800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582222791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57c8436ea69318540a51f136d58820f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  maxHealth: 60
+  hitStunTime: 0
+  knockbackMultiplier: 2
+  invincibilityTime: 0
+  blinkColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  blinkInterval: 0.08
+  defeatAnimation: Boss_Lose
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -3550,6 +3573,81 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1002187332
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1002187333}
+  - component: {fileID: 1002187336}
+  - component: {fileID: 1002187334}
+  m_Layer: 0
+  m_Name: Game UI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1002187333
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1002187332}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.22, y: -1.69, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1002187334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1002187332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3debcad977a5cac4aa790cbbc4d2a955, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameUI
+  bossDisplayName: Enemy Boss
+  lowHealthAt: 0.3
+  trailDelay: 0.4
+  trailSpeed: 0.8
+  pauseKey: 27
+  mainMenuScene: MainMenu
+  endScreenDelay: 1.5
+--- !u!114 &1002187336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1002187332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 42363a14e06035847b4788859ea0314c, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: 7471db1f5d0ac92439d166bf274e4579, type: 3}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
 --- !u!1 &1071791118
 GameObject:
   m_ObjectHideFlags: 0
@@ -4656,8 +4754,8 @@ Transform:
   m_GameObject: {fileID: 1647133365}
   serializedVersion: 2
   m_LocalRotation: {x: -0.00015708234, y: 0.0025865294, z: -0.0000027095243, w: 0.9999967}
-  m_LocalPosition: {x: 144.4, y: -74, z: -0}
-  m_LocalScale: {x: 10.827804, y: 2.670042, z: 1}
+  m_LocalPosition: {x: 144.4, y: -74.46, z: 0}
+  m_LocalScale: {x: 10.827804, y: 1.7355273, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -4817,6 +4915,8 @@ GameObject:
   - component: {fileID: 1690322784}
   - component: {fileID: 1690322785}
   - component: {fileID: 1690322786}
+  - component: {fileID: 1690322788}
+  - component: {fileID: 1690322787}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5118,6 +5218,40 @@ MonoBehaviour:
   comboCooldown: 0.15
   logTiming: 0
   animationPrefix: Player_Attack
+--- !u!114 &1690322787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 575d6163232b1f846a7d83811bc25b68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpecialMeter
+  maxMeter: 100
+  gainPerDamageDealt: 4
+  gainPerDamageTaken: 3
+--- !u!114 &1690322788
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57c8436ea69318540a51f136d58820f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  maxHealth: 25
+  hitStunTime: 0.3
+  knockbackMultiplier: 2
+  invincibilityTime: 0.6
+  blinkColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  blinkInterval: 0.08
+  defeatAnimation: Player_Lose
 --- !u!1 &1755212591
 GameObject:
   m_ObjectHideFlags: 0
@@ -5855,3 +5989,4 @@ SceneRoots:
   - {fileID: 735293163}
   - {fileID: 403257922}
   - {fileID: 57464422}
+  - {fileID: 1002187333}

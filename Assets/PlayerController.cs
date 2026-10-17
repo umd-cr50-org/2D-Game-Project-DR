@@ -97,6 +97,12 @@ public class PlayerController : MonoBehaviour
     private int groundAnimationHash;
     private int runAnimationHash;
     private PlayerController standingOnCharacter; // the character whose head we're on top of this frame (slide off it)
+    private float stunEndTime = -1f; // hit stun: no control until then (see TakeHit)
+    private bool isDefeated;
+    public bool IsStunned => Time.time < stunEndTime;
+    public bool IsDefeated => isDefeated;
+    public bool CanAct => !IsStunned && !isDefeated; // attacks and magic check this too
+    public Color BaseColor => isFreeFalling ? freeFallTint : normalColor; // the sprite's color when not flashing
 
     [Header ("Characters")]
     [Tooltip("Characters can't stand on each other: anyone landing on a character's head is pushed off sideways at this speed.")]
@@ -157,6 +163,11 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!CanAct)
+        {
+            UpdateHelpless();
+            return;
+        }
         GetInputs();
         CheckGrounded();
         RefreshAirLimits();
@@ -188,6 +199,94 @@ public class PlayerController : MonoBehaviour
             }
         }
         SlideOffCharacter();
+    }
+
+    // Knocked back, or defeated: physics only, no control. Knockback eases off once back on the ground.
+    private void UpdateHelpless()
+    {
+        xAxis = 0f;
+        previousXAxis = 0f;
+        CheckGrounded();
+        RefreshAirLimits();
+        UpdateGroundStick();
+        if (isGroundStuck)
+        {
+            Vector2 alongGround = new Vector2(groundNormal.y, -groundNormal.x);
+            float vx = Mathf.MoveTowards(Vector2.Dot(rb.linearVelocity, alongGround), 0f, dashMomentumDecay * Time.deltaTime);
+            rb.linearVelocity = alongGround * vx;
+        }
+        SetAnimBool("Walking", false);
+        if (isDefeated)
+        {
+            SetAnimBool("InAir", false); // keep air transitions from pulling the animator out of the defeat pose
+        }
+        SlideOffCharacter();
+    }
+
+    // Called by Health when a hit lands: stops whatever the character was doing (dash, attack, spell)
+    // and sends it flying with the hit's knockback. No control until stunTime is over.
+    public void TakeHit(Vector2 knockback, float stunTime)
+    {
+        if (isDefeated)
+        {
+            return;
+        }
+        Interrupt();
+        stunEndTime = Time.time + stunTime;
+        if (knockback.y > 0f)
+        {
+            lastJumpTime = Time.time; // leaving the ground: don't let the ground stick cancel the launch
+            if (isGroundStuck)
+            {
+                ReleaseGroundStick();
+            }
+        }
+        rb.linearVelocity = knockback;
+    }
+
+    // Called by Health at 0 health: stops for good and plays the defeat animation (if the animator has it)
+    public void Defeat(string defeatState)
+    {
+        if (isDefeated)
+        {
+            return;
+        }
+        Interrupt();
+        isDefeated = true;
+        rb.linearVelocity = new Vector2(0f, Mathf.Min(rb.linearVelocity.y, 0f));
+        foreach (string parameter in new[] { "Walking", "Jumping", "DoubleJumping", "Dashing", "FreeFall", "InAir" })
+        {
+            SetAnimBool(parameter, false);
+        }
+        if (anim != null && !string.IsNullOrEmpty(defeatState))
+        {
+            int stateHash = Animator.StringToHash(defeatState);
+            if (anim.HasState(0, stateHash))
+            {
+                anim.speed = 1f;
+                anim.Play(stateHash, 0, 0f);
+                anim.Update(0f);
+            }
+        }
+    }
+
+    private void Interrupt()
+    {
+        CancelDash();
+        isCarryingMomentum = false;
+        if (attack != null)
+        {
+            attack.Interrupt();
+        }
+        if (caster != null)
+        {
+            caster.Interrupt();
+        }
+        if (isHovering)
+        {
+            isHovering = false;
+            rb.gravityScale = defaultGravityScale;
+        }
     }
 
     // On top of another character: push off to whichever side we're already leaning toward
@@ -228,7 +327,7 @@ public class PlayerController : MonoBehaviour
         {
             return; // not using code-driven animations (the player)
         }
-        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking)
+        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking || isDefeated)
         {
             return; // attacks and spells play their own animations
         }

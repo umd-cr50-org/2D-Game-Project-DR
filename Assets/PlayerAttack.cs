@@ -186,7 +186,7 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        if (!pressed || Time.time < nextComboTime || player.IsFreeFalling || player.IsCasting)
+        if (!pressed || Time.time < nextComboTime || player.IsFreeFalling || player.IsCasting || !player.CanAct)
         {
             return;
         }
@@ -278,6 +278,16 @@ public class PlayerAttack : MonoBehaviour
     // Called by PlayerController when a dash starts: the next press opens a new string instead of continuing this one
     public void BreakString()
     {
+        stringIndex = -1;
+    }
+
+    // Called by PlayerController when the character is hit or defeated: the string stops on the spot
+    public void Interrupt()
+    {
+        if (isAttacking)
+        {
+            EndAttack();
+        }
         stringIndex = -1;
     }
 

@@ -8,10 +8,13 @@ public class KeyboardCharacterInput : CharacterInput
     [SerializeField] private KeyCode attackKey = KeyCode.Z;
     [SerializeField] private KeyCode magicKey = KeyCode.X;
 
-    public override float Horizontal => Input.GetAxisRaw("Horizontal");
-    public override bool JumpPressed => Input.GetButtonDown("Jump");
-    public override bool JumpReleased => Input.GetButtonUp("Jump");
-    public override bool AttackPressed => Input.GetKeyDown(attackKey);
+    // While the game is paused (time stopped) every button reads as not pressed
+    private static bool Paused => Time.timeScale == 0f;
+
+    public override float Horizontal => Paused ? 0f : Input.GetAxisRaw("Horizontal");
+    public override bool JumpPressed => !Paused && Input.GetButtonDown("Jump");
+    public override bool JumpReleased => !Paused && Input.GetButtonUp("Jump");
+    public override bool AttackPressed => !Paused && Input.GetKeyDown(attackKey);
     public override int DashDirection => 0;
-    public override bool MagicPressed => Input.GetKeyDown(magicKey);
+    public override bool MagicPressed => !Paused && Input.GetKeyDown(magicKey);
 }

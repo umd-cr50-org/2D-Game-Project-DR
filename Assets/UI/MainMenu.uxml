@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Title screen. MainMenu.cs finds the buttons by name. -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="GameUI.uss" />
+    <ui:VisualElement name="root" class="screen title-screen">
+
+        <ui:VisualElement name="main-panel" class="menu-box">
+            <ui:Label name="game-title" text="2D GAME" class="game-title" />
+            <ui:Button name="start-button" text="Start" class="menu-button" />
+            <ui:Button name="controls-button" text="Controls" class="menu-button" />
+            <ui:Button name="quit-button" text="Quit" class="menu-button" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="controls-panel" class="menu-box hidden">
+            <ui:Label text="CONTROLS" class="menu-title" />
+            <ui:Label class="controls-list" text="Move: Arrow keys / A, D&#10;Jump / Double jump: Space&#10;Dash: double tap left or right&#10;Attack (combo): Z&#10;Magic: X&#10;Pause: Esc" />
+            <ui:Button name="back-button" text="Back" class="menu-button" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
