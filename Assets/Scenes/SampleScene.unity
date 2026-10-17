@@ -4452,13 +4452,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   walkspeed: 31.7
   dashDistance: 30
-  dashWindup: 0.5
+  dashWindup: 0.3
   dashTravelTime: 1
   dashCooldown: 2
   doubleTapWindow: 1
+  dashMomentumDecay: 50
   jumpForce: 40.2
   jumpCutMultiplier: 0.4
   maxJumps: 2
+  freeFallDriftMultiplier: 0.6
+  freeFallTint: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1818360608 &1690322784
 PositionConstraint:
   m_ObjectHideFlags: 0
@@ -4518,30 +4521,32 @@ MonoBehaviour:
     matchClipLength: 1
     duration: 2
     playbackSpeed: 1
-    cancelPoint: 1
+    cancelPoint: 0.85
     comboWindow: 1
   - name: Attack 2
     clip: {fileID: 0}
     matchClipLength: 1
-    duration: 2
+    duration: 1
     playbackSpeed: 1
-    cancelPoint: 1
+    cancelPoint: 0.42
     comboWindow: 1
   - name: Attack 3
     clip: {fileID: 0}
     matchClipLength: 1
-    duration: 2
+    duration: 1
     playbackSpeed: 1
-    cancelPoint: 1
+    cancelPoint: 0.48
     comboWindow: 0.3
   - name: Attack 4 (finisher)
     clip: {fileID: 0}
     matchClipLength: 1
-    duration: 2
+    duration: 1
     playbackSpeed: 1
-    cancelPoint: 1
+    cancelPoint: 0.55
     comboWindow: 0.3
-  comboCooldown: 0.35
+  groundString: 01000000020000000300000004000000i
+  airString: 040000000300000002000000i
+  comboCooldown: 0.15
   logTiming: 0
 --- !u!1 &1755212591
 GameObject:

@@ -1,11 +1,14 @@
 using UnityEngine;
 
-// Smash-style jab combo: every press of the attack button throws exactly one hit, up to four in a row.
-// Press once -> Attack1 only. Press three times -> Attack1, Attack2, Attack3, one per press.
+// Smash-style attack strings: every press of the attack button throws exactly one hit.
+// On the ground the string is Attack1 -> Attack2 -> Attack3 -> Attack4 (groundString);
+// in the air it's Attack4 -> Attack3 -> Attack2 (airString). Press once -> only the first hit,
+// press three times -> the first three, one per press.
 // A press during a hit is remembered and comes out as the next hit at that hit's cancel point,
-// so the combo keeps up with the player's presses. Stop pressing and the combo ends.
+// so the combo keeps up with the player's presses. Stop pressing and the string ends.
+// Landing mid air string (or leaving the ground mid jab) starts the other string fresh on the next hit.
 // Drives the animator through the bools Attack1 ... Attack4 (only one is true at a time).
-// Every hit has its own timing block in the Inspector (see AttackTiming).
+// Every attack has its own timing block in the Inspector (see AttackTiming), shared by both strings.
 [RequireComponent(typeof(PlayerController))]
 public class PlayerAttack : MonoBehaviour
 {
@@ -46,23 +49,31 @@ public class PlayerAttack : MonoBehaviour
     };
 
     [Header ("Combo")]
-    [SerializeField] private float comboCooldown = 0.35f; // pause after the finisher before a new combo can start
+    [Tooltip("Which attacks (1-4) a grounded string throws, in order, one per press.")]
+    [SerializeField] private int[] groundString = { 1, 2, 3, 4 };
+    [Tooltip("Which attacks (1-4) an air string throws, in order, one per press.")]
+    [SerializeField] private int[] airString = { 4, 3, 2 };
+    [SerializeField] private float comboCooldown = 0.35f; // pause after the last hit of a string before a new one can start
     [SerializeField] private bool logTiming; // prints each hit's length and cancel time to the Console
 
     private static readonly string[] attackBools = { "Attack1", "Attack2", "Attack3", "Attack4" };
-    private static readonly string[] defaultClipNames = { "Player_Attack", "Player_Attack2", "Player_Attack3", "Player_Attack4" };
+    private static readonly string[] attackStates = { "Player_Attack", "Player_Attack2", "Player_Attack3", "Player_Attack4" }; // animator states, named after their clips
+    private static readonly string[] defaultClipNames = attackStates;
 
     private Animator anim;
     private PlayerController player;
-    private int comboStep; // the hit playing (or last played), 1-based; 0 = none yet
+    private int[] currentString = { };
+    private int stringIndex = -1; // position in currentString of the hit playing (or last played); -1 = none yet
     private int queuedHits; // presses made during a hit that haven't been thrown yet
     private bool isAttacking;
+    private bool isAerial; // currentString is the air string
     private float hitStartTime;
     private float hitLength;
     private float cancelTime;
     private float nextComboTime;
 
     public bool IsAttacking => isAttacking;
+    public bool IsAirAttacking => isAttacking && isAerial;
     private int MaxHits => Mathf.Min(attacks.Length, attackBools.Length);
 
     void Start()
@@ -86,8 +97,9 @@ public class PlayerAttack : MonoBehaviour
 
         if (isAttacking)
         {
-            // Count each press so N presses give exactly N hits, never more than the combo has left
-            if (pressed && comboStep + queuedHits < MaxHits)
+            // Count each press so N presses give exactly N hits, never more than the string has left
+            int hitsLeft = currentString.Length - 1 - stringIndex;
+            if (pressed && queuedHits < hitsLeft)
             {
                 queuedHits++;
             }
@@ -96,7 +108,17 @@ public class PlayerAttack : MonoBehaviour
             if (queuedHits > 0 && elapsed >= cancelTime)
             {
                 queuedHits--;
-                StartHit(comboStep + 1);
+                bool inAir = !player.IsGrounded;
+                if (inAir == isAerial)
+                {
+                    StartHit(stringIndex + 1);
+                }
+                else
+                {
+                    // Landed (or left the ground) mid string: this press opens the other string instead
+                    queuedHits = 0;
+                    StartString(inAir);
+                }
                 return;
             }
 
@@ -107,31 +129,85 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        if (!pressed || player.IsDashing || Time.time < nextComboTime)
+        if (!pressed || Time.time < nextComboTime || player.IsFreeFalling)
         {
             return;
         }
 
-        bool continuesCombo = comboStep > 0 && comboStep < MaxHits
-            && Time.time <= hitStartTime + hitLength + attacks[comboStep - 1].comboWindow;
-        StartHit(continuesCombo ? comboStep + 1 : 1);
+        // A press shortly after a hit ends picks the string back up, as long as we're still on the same
+        // footing (ground or air) and the string has hits left; otherwise it starts the right string over
+        bool inAirNow = !player.IsGrounded;
+        bool continuesString = stringIndex >= 0 && isAerial == inAirNow
+            && stringIndex < currentString.Length - 1
+            && Time.time <= hitStartTime + hitLength + attacks[AttackNumber(stringIndex) - 1].comboWindow;
+
+        // Out of air strings for this airtime: the press does nothing (and doesn't cancel a dash)
+        if (!continuesString && inAirNow && !player.CanStartAirString)
+        {
+            return;
+        }
+
+        // Attacking breaks out of a dash; the dash's momentum carries into the attack
+        player.CancelDash();
+
+        if (continuesString)
+        {
+            StartHit(stringIndex + 1);
+        }
+        else
+        {
+            StartString(inAirNow);
+        }
     }
 
-    private void StartHit(int step)
+    private void StartString(bool inAir)
     {
+        if (inAir)
+        {
+            // Only one air string per airtime (two with a dash in between); PlayerController keeps count
+            if (!player.CanStartAirString)
+            {
+                return;
+            }
+            player.RegisterAirString();
+        }
+        isAerial = inAir;
+        currentString = inAir ? airString : groundString;
+        if (currentString.Length > 0)
+        {
+            StartHit(0);
+        }
+    }
+
+    // Which attack (1-4) sits at this position of the current string
+    private int AttackNumber(int index)
+    {
+        return Mathf.Clamp(currentString[index], 1, MaxHits);
+    }
+
+    private void StartHit(int index)
+    {
+        int step = AttackNumber(index);
         AttackTiming timing = attacks[step - 1];
 
-        comboStep = step;
+        stringIndex = index;
         isAttacking = true;
         hitStartTime = Time.time;
         hitLength = GetHitLength(timing);
         cancelTime = hitLength * timing.cancelPoint;
 
+        SetAttackBool(step);
         if (anim != null)
         {
             anim.speed = timing.playbackSpeed;
+            // Jump straight into the hit's state from wherever the animator is (dash, jump, walk...),
+            // since the animator only has transitions into the attacks from idle
+            int stateHash = Animator.StringToHash(attackStates[step - 1]);
+            if (anim.HasState(0, stateHash))
+            {
+                anim.Play(stateHash, 0, 0f);
+            }
         }
-        SetAttackBool(step);
 
         if (logTiming)
         {
@@ -139,13 +215,24 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
+    // Called by PlayerController when a dash starts: the next press opens a new string instead of continuing this one
+    public void BreakString()
+    {
+        stringIndex = -1;
+    }
+
     private void EndAttack()
     {
         isAttacking = false;
         queuedHits = 0;
-        if (comboStep >= MaxHits)
+        if (isAerial)
         {
-            comboStep = 0;
+            player.AirStringFinished(); // the second air string of an airtime puts the player in free fall
+        }
+        if (stringIndex >= currentString.Length - 1)
+        {
+            // Finished the whole string (ground or air): short pause before the next one
+            stringIndex = -1;
             nextComboTime = Time.time + comboCooldown;
         }
         if (anim != null)

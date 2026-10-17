@@ -16,7 +16,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float dashTravelTime = 0.1f; // how long the warp takes to cover dashDistance
     [SerializeField] private float dashCooldown = 2f;
     [SerializeField] private float doubleTapWindow = 1.0f; // max time between taps
+    [SerializeField] private float dashMomentumDecay = 50f; // after a cancelled dash, how fast (units/s per second) the leftover speed bleeds off
     private bool isDashing;
+    private bool isCarryingMomentum; // a cancelled dash's speed is still easing back to normal movement
     private bool isDashMoving;
     private float dashDirection;
     private float dashMoveStartTime;
@@ -36,11 +38,29 @@ public class PlayerController : MonoBehaviour
     private bool isDoubleJumping;
     private ContactFilter2D groundFilter;
 
+    // Per airtime the player gets one air dash and one air string. Air string -> dash -> air string is
+    // allowed as a recovery, but after that second string the player is helpless until they land (like Smash).
+    [Header ("Air Limits / Free Fall")]
+    [SerializeField, Range(0f, 1f)] private float freeFallDriftMultiplier = 0.6f; // sideways control while helpless
+    [SerializeField] private Color freeFallTint = new Color(0.55f, 0.55f, 0.55f, 1f); // sprite dims while helpless
+    private bool airDashUsed;
+    private int airStringsUsed;
+    private bool dashedSinceAirString; // dashed after the first air string, which unlocks one more
+    private bool isFreeFalling;
+    private Color normalColor;
+    private bool hasFreeFallParam; // animator has a "FreeFall" bool to drive a helpless animation
+
     private PlayerAttack attack;
 
     public static PlayerController Instance;
     public bool IsDashing => isDashing;
+    public bool IsGrounded => isGrounded;
+    public bool IsFreeFalling => isFreeFalling;
+    public bool CanStartAirString => !isFreeFalling && (airStringsUsed == 0 || (airStringsUsed == 1 && dashedSinceAirString));
+    private bool CanDashNow => !isFreeFalling && (isGrounded || !airDashUsed);
     private bool IsAttacking => attack != null && attack.IsAttacking;
+    private bool IsAirAttacking => attack != null && attack.IsAirAttacking;
+    private bool isHovering; // gravity is off because an air string is holding the player up
 
 
     private void Awake()
@@ -65,6 +85,14 @@ public class PlayerController : MonoBehaviour
         anim = GetComponent<Animator>();
         sr = GetComponentInChildren<SpriteRenderer>();
         attack = GetComponent<PlayerAttack>();
+        normalColor = sr.color;
+        foreach (AnimatorControllerParameter p in anim.parameters)
+        {
+            if (p.name == "FreeFall" && p.type == AnimatorControllerParameterType.Bool)
+            {
+                hasFreeFallParam = true;
+            }
+        }
 
         // Only contacts whose normal points up (within 45 degrees) count as ground
         groundFilter.useTriggers = false;
@@ -76,16 +104,32 @@ public class PlayerController : MonoBehaviour
     {
         GetInputs();
         CheckGrounded();
+        RefreshAirLimits();
         Dash();
+        AirAttackHover();
         if (IsAttacking)
         {
-            // Rooted in place for each hit, like a jab; gravity still applies
-            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            if (isGrounded)
+            {
+                // Rooted in place for each jab; gravity still applies
+                isCarryingMomentum = false;
+                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            }
+            else if (isHovering)
+            {
+                // Hang at this height for the air string; sideways speed (walk or dash) eases off to a stop
+                float vx = Mathf.MoveTowards(rb.linearVelocity.x, 0f, dashMomentumDecay * Time.deltaTime);
+                isCarryingMomentum = false;
+                rb.linearVelocity = new Vector2(vx, 0f);
+            }
         }
         else if (!isDashing)
         {
             Move();
-            Jump();
+            if (!isFreeFalling)
+            {
+                Jump(); // helpless: no jumps until landing
+            }
         }
     }
     void GetInputs()
@@ -95,7 +139,15 @@ public class PlayerController : MonoBehaviour
 
     private void Move()
     {
-           rb.linearVelocity = new Vector2(xAxis * walkspeed, rb.linearVelocity.y);
+           float targetX = xAxis * walkspeed * (isFreeFalling ? freeFallDriftMultiplier : 1f);
+           if (isCarryingMomentum)
+           {
+               // Ease from the cancelled dash's speed into normal walking instead of snapping to it
+               float vx = Mathf.MoveTowards(rb.linearVelocity.x, targetX, dashMomentumDecay * Time.deltaTime);
+               isCarryingMomentum = vx != targetX;
+               targetX = vx;
+           }
+           rb.linearVelocity = new Vector2(targetX, rb.linearVelocity.y);
            anim.SetBool("Walking", rb.linearVelocity.x != 0 && isGrounded);
            Flip();
     }
@@ -117,8 +169,17 @@ public class PlayerController : MonoBehaviour
             bool isDoubleTap = tapDirection == lastTapDirection
                 && Time.time - lastTapTime <= doubleTapWindow;
 
-            if (isDoubleTap && !isDashing && !IsAttacking && Time.time >= nextDashTime)
+            if (isDoubleTap && !isDashing && !IsAttacking && CanDashNow && Time.time >= nextDashTime)
             {
+                if (!isGrounded)
+                {
+                    airDashUsed = true;
+                    dashedSinceAirString = airStringsUsed > 0;
+                }
+                if (attack != null)
+                {
+                    attack.BreakString(); // a dash ends the current string; attacking after it starts a new one
+                }
                 isDashing = true;
                 isDashMoving = false;
                 dashDirection = tapDirection;
@@ -137,6 +198,14 @@ public class PlayerController : MonoBehaviour
 
         if (!isDashing)
         {
+            return;
+        }
+
+        // Jumping or pushing the other way breaks out of the dash, keeping whatever speed it had
+        bool pushedOtherWay = xAxis != 0 && Mathf.Sign(xAxis) != dashDirection;
+        if (Input.GetButtonDown("Jump") || pushedOtherWay)
+        {
+            CancelDash();
             return;
         }
 
@@ -176,6 +245,84 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         nextDashTime = Time.time + dashCooldown;
         anim.SetBool("Dashing", false);
+    }
+
+    // Cuts the dash short (animation and all) but leaves the player's current velocity alone,
+    // so a dash cancelled mid-warp carries its speed into whatever comes next (Move eases it off).
+    // Cancelling during the wind-up just drops the dash, since the player hasn't moved yet.
+    public void CancelDash()
+    {
+        if (!isDashing)
+        {
+            return;
+        }
+        isCarryingMomentum = isDashMoving;
+        isDashing = false;
+        isDashMoving = false;
+        rb.gravityScale = defaultGravityScale;
+        nextDashTime = Time.time + dashCooldown;
+        anim.SetBool("Dashing", false);
+    }
+
+    // Called by PlayerAttack when a new air string starts (not for each hit in it)
+    public void RegisterAirString()
+    {
+        airStringsUsed++;
+        dashedSinceAirString = false;
+    }
+
+    // Called by PlayerAttack when an air string ends: the second one of an airtime leaves the player helpless
+    public void AirStringFinished()
+    {
+        if (airStringsUsed >= 2 && !isGrounded)
+        {
+            SetFreeFall(true);
+        }
+    }
+
+    // Landing gives back the air dash and air string, and ends free fall
+    private void RefreshAirLimits()
+    {
+        if (!isGrounded || rb.linearVelocity.y > 0.01f)
+        {
+            return;
+        }
+        airDashUsed = false;
+        airStringsUsed = 0;
+        dashedSinceAirString = false;
+        if (isFreeFalling)
+        {
+            SetFreeFall(false);
+        }
+    }
+
+    private void SetFreeFall(bool on)
+    {
+        isFreeFalling = on;
+        sr.color = on ? freeFallTint : normalColor;
+        if (hasFreeFallParam)
+        {
+            anim.SetBool("FreeFall", on);
+        }
+    }
+
+    // While an air string is playing, gravity is switched off so the player stays up until it's finished;
+    // it comes back the moment the string ends (or is interrupted).
+    private void AirAttackHover()
+    {
+        if (IsAirAttacking && !isDashing)
+        {
+            if (!isHovering)
+            {
+                isHovering = true;
+                rb.gravityScale = 0f;
+            }
+        }
+        else if (isHovering)
+        {
+            isHovering = false;
+            rb.gravityScale = defaultGravityScale;
+        }
     }
 
     // Face the direction of input; keep the last facing when there's no input
