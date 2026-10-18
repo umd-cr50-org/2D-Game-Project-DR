@@ -564,6 +564,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &205360783
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 205360784}
+  m_Layer: 0
+  m_Name: Teleport Point 3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &205360784
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 205360783}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 48.5, y: -70.9, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &234544781
 GameObject:
   m_ObjectHideFlags: 0
@@ -1717,6 +1748,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   followSpeed: 0.1
   zoomSize: 29.73
+  backgroundColor: {r: 0.23584908, g: 0.2302866, b: 0.2302866, a: 1}
 --- !u!1 &582222791
 GameObject:
   m_ObjectHideFlags: 0
@@ -1970,6 +2002,26 @@ MonoBehaviour:
   phase2ProjectileColor: {r: 0.75, g: 0.35, b: 1, a: 1}
   phase2ProjectilePrefab: {fileID: 0}
   phase2MagicAnyTime: 1
+  teleportPoints:
+  - {fileID: 2117244079}
+  - {fileID: 1581057685}
+  - {fileID: 205360784}
+  teleportAtHealth:
+  - 0.75
+  - 0.5
+  - 0.25
+  teleportMinGapToPlayer: 6
+  teleportFadeTime: 0.35
+  teleportOutAnimation: Boss_Magic
+  teleportInAnimation: Boss_Magic
+  teleportOutSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  teleportInSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
   ultimateUseGap: 12
   battleStartSound:
     clip: {fileID: 0}
@@ -4861,6 +4913,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1581057684
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1581057685}
+  m_Layer: 0
+  m_Name: Teleport Point 2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1581057685
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581057684}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 123.4, y: 34, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1647133365
 GameObject:
   m_ObjectHideFlags: 0
@@ -6341,6 +6424,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2117244078
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2117244079}
+  m_Layer: 0
+  m_Name: Teleport Point 1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2117244079
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2117244078}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 20.9, y: 40.2, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -6384,3 +6498,6 @@ SceneRoots:
   - {fileID: 403257922}
   - {fileID: 57464422}
   - {fileID: 1002187333}
+  - {fileID: 2117244079}
+  - {fileID: 1581057685}
+  - {fileID: 205360784}
