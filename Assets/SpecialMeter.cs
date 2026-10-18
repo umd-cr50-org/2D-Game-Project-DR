@@ -28,13 +28,6 @@ public class SpecialMeter : MonoBehaviour
     [Tooltip("Size of the glow compared to the character's body.")]
     [SerializeField] private float chargeGlowSize = 1.6f;
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect chargeStartSound = new SoundEffect();
-    [Tooltip("Loops while charging.")]
-    [SerializeField] private SoundEffect chargeLoopSound = new SoundEffect();
-    [Tooltip("Plays the moment the gauge becomes full.")]
-    [SerializeField] private SoundEffect fullSound = new SoundEffect();
-
     public float Max => maxMeter;
     public float Current { get; private set; }
     public float Fraction => Current / maxMeter;
@@ -42,6 +35,9 @@ public class SpecialMeter : MonoBehaviour
     public bool IsCharging { get; private set; }
 
     public event Action<SpecialMeter> Changed;
+    public event Action ChargeStarted; // GameAudio plays the charge start sound and loop
+    public event Action ChargeStopped;
+    public event Action BecameFull; // the gauge just filled up
 
     private Health health;
     private PlayerController body;
@@ -51,7 +47,6 @@ public class SpecialMeter : MonoBehaviour
     private Animator anim;
     private Collider2D bodyCollider;
     private SpriteRenderer glow;
-    private AudioSource loopSource;
 
     void Awake()
     {
@@ -109,8 +104,7 @@ public class SpecialMeter : MonoBehaviour
     private void StartCharging()
     {
         IsCharging = true;
-        chargeStartSound.Play();
-        PlayLoop(true);
+        ChargeStarted?.Invoke();
         body.SetAnimBool("Charging", true);
         PlayState(chargeAnimation);
         UpdateGlow();
@@ -124,7 +118,7 @@ public class SpecialMeter : MonoBehaviour
             return;
         }
         IsCharging = false;
-        PlayLoop(false);
+        ChargeStopped?.Invoke();
         body.SetAnimBool("Charging", false);
         if (!string.IsNullOrEmpty(chargeAnimation) && !body.IsDefeated)
         {
@@ -158,7 +152,7 @@ public class SpecialMeter : MonoBehaviour
         }
         if (Current >= maxMeter && before < maxMeter)
         {
-            fullSound.Play();
+            BecameFull?.Invoke();
         }
         Changed?.Invoke(this);
     }
@@ -198,31 +192,6 @@ public class SpecialMeter : MonoBehaviour
         Vector3 parentScale = transform.lossyScale;
         glow.transform.position = b.center;
         glow.transform.localScale = new Vector3(worldSize / Mathf.Abs(parentScale.x), worldSize / Mathf.Abs(parentScale.y), 1f);
-    }
-
-    private void PlayLoop(bool on)
-    {
-        if (chargeLoopSound.clip == null)
-        {
-            return;
-        }
-        if (loopSource == null)
-        {
-            loopSource = gameObject.AddComponent<AudioSource>();
-            loopSource.playOnAwake = false;
-            loopSource.loop = true;
-            loopSource.spatialBlend = 0f;
-        }
-        if (on)
-        {
-            loopSource.clip = chargeLoopSound.clip;
-            loopSource.volume = chargeLoopSound.volume * SoundPlayer.MasterVolume;
-            loopSource.Play();
-        }
-        else
-        {
-            loopSource.Stop();
-        }
     }
 
     private void PlayState(string stateName)

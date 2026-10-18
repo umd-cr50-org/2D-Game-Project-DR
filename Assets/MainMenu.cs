@@ -10,7 +10,6 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private string gameTitle = "2D GAME";
     [Tooltip("Scene loaded by Start (it must be in File > Build Profiles' scene list).")]
     [SerializeField] private string gameScene = "SampleScene";
-    [SerializeField] private SoundEffect buttonClickSound = new SoundEffect();
 
     private VisualElement mainPanel, controlsPanel;
 
@@ -42,7 +41,7 @@ public class MainMenu : MonoBehaviour
     {
         button.clicked += () =>
         {
-            buttonClickSound.Play();
+            GameAudio.Play(GameAudio.UISound.ButtonClick);
             action();
         };
     }

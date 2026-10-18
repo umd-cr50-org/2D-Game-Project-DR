@@ -9,20 +9,17 @@ public class HealthPickup : MonoBehaviour
     [SerializeField] private float lifetime = 10f;
     [Tooltip("Blinks for this many seconds before disappearing.")]
     [SerializeField] private float blinkTime = 2f;
-    [SerializeField] private SoundEffect pickupSound = new SoundEffect();
 
     private float dieAt;
     private Collider2D col;
     private SpriteRenderer sr;
 
-    public void Setup(float heal, float life, SoundEffect sound = null)
+    public static event System.Action PickedUp; // any health orb picked up (GameAudio plays the pickup sound)
+
+    public void Setup(float heal, float life)
     {
         healAmount = heal;
         lifetime = life;
-        if (sound != null)
-        {
-            pickupSound = sound;
-        }
         dieAt = Time.time + lifetime;
     }
 
@@ -75,7 +72,7 @@ public class HealthPickup : MonoBehaviour
         if (col.bounds.Intersects(playerCol.bounds))
         {
             health.Heal(healAmount);
-            pickupSound.Play();
+            PickedUp?.Invoke();
             Destroy(gameObject);
         }
     }

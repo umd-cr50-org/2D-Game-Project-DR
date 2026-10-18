@@ -50,14 +50,6 @@ public class MagicCaster : MonoBehaviour
     [Tooltip("Same, when the spell ends in the air (e.g. Player_Fall).")]
     [SerializeField] private string castEndAirAnimation = "Player_Fall";
 
-    [Header ("Sounds")]
-    [Tooltip("Plays when the cast starts (wind-up).")]
-    [SerializeField] private SoundEffect castSound = new SoundEffect();
-    [Tooltip("Plays when the spell comes out.")]
-    [SerializeField] private SoundEffect fireSound = new SoundEffect();
-    [Tooltip("Plays when a projectile hits something.")]
-    [SerializeField] private SoundEffect impactSound = new SoundEffect();
-
     public bool IsCasting { get; private set; }
     public bool IsCastState(int stateHash) =>
         (!string.IsNullOrEmpty(castStateName) && Animator.StringToHash(castStateName) == stateHash)
@@ -65,6 +57,9 @@ public class MagicCaster : MonoBehaviour
     private string originalCastState; // the cast animation before SetCastState (used when the new one doesn't exist)
 
     // Projectile settings other scripts can change during play (the boss's phase 2 upgrades its magic)
+    public event System.Action CastStarted; // wind-up begins (GameAudio plays the cast sound)
+    public event System.Action Fired; // the spell comes out
+    public event System.Action ProjectileHit; // one of this caster's projectiles hit something
     public float MeterCost { get => meterCost; set => meterCost = value; }
     public int Count { get => count; set => count = Mathf.Max(1, value); }
     public float Speed { get => speed; set => speed = value; }
@@ -162,7 +157,7 @@ public class MagicCaster : MonoBehaviour
             body.Face(AimTarget.position.x - transform.position.x);
         }
         body.SetAnimBool("Casting", true);
-        castSound.Play();
+        CastStarted?.Invoke();
         if (anim != null && !string.IsNullOrEmpty(castStateName))
         {
             int stateHash = Animator.StringToHash(castStateName);
@@ -216,7 +211,7 @@ public class MagicCaster : MonoBehaviour
             return;
         }
         fired = true;
-        fireSound.Play();
+        Fired?.Invoke();
 
         float facing = body.FacingSign();
         Vector2 scale = new Vector2(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.y));
@@ -239,7 +234,7 @@ public class MagicCaster : MonoBehaviour
                 ? Instantiate(projectilePrefab, origin, Quaternion.identity)
                 : CreateDefaultOrb(origin);
             projectile.Launch(gameObject, direction, speed, damage, knockback, lifetime, size * 0.5f);
-            projectile.ImpactSound = impactSound;
+            projectile.Impacted += () => ProjectileHit?.Invoke();
         }
     }
 

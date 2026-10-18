@@ -1,12 +1,15 @@
 using UnityEngine;
 
-// One sound effect slot for the Inspector: drag an audio clip in, set its volume, and a little random pitch
-// so repeated sounds (footsteps, jabs) don't sound identical. Empty slots are silent, so every slot is optional.
+// One sound effect slot for the Inspector: drag an audio clip in (plus optional Variations, picked at random),
+// set its volume, and a little random pitch so repeated sounds (footsteps, jabs) don't sound identical.
+// Empty slots are silent, so every slot is optional.
 // Scripts call Play(); the sound is 2D (same volume wherever it happens on screen).
 [System.Serializable]
 public class SoundEffect
 {
     public AudioClip clip;
+    [Tooltip("Optional: more versions of this sound (e.g. other quotes). Each play picks one at random from Clip and these, never the same one twice in a row.")]
+    public AudioClip[] variations = new AudioClip[0];
     [Range(0f, 1f)] public float volume = 1f;
     [Tooltip("Random pitch up/down each time it plays (0 = always the same). Ignored by voice lines.")]
     [Range(0f, 0.5f)] public float pitchVariation = 0.05f;
@@ -21,31 +24,54 @@ public class SoundEffect
 
     [System.NonSerialized] private float lastPlayTime = float.NegativeInfinity;
     [System.NonSerialized] private int timesPlayed;
+    [System.NonSerialized] private AudioClip lastClip;
 
     public void Play()
     {
-        if (TryUse())
+        AudioClip picked = TryPick();
+        if (picked != null)
         {
-            SoundPlayer.Play(clip, volume, 1f + Random.Range(-pitchVariation, pitchVariation));
+            SoundPlayer.Play(picked, volume, 1f + Random.Range(-pitchVariation, pitchVariation));
         }
     }
 
-    // Checks the clip and the limits; if it may play, counts it as played and returns true.
-    // (Voice lines call this too, so the limits work for them as well.)
-    public bool TryUse()
+    // Checks the limits; if it may play, counts it as played and returns the clip to play (Clip or one of the
+    // Variations, at random). Returns null when it shouldn't play. Voice lines use this too.
+    public AudioClip TryPick()
     {
-        if (clip == null)
-        {
-            return false;
-        }
         float now = Time.unscaledTime; // real time, so cooldowns still run while the game is paused
-        if (now - lastPlayTime < cooldown || (maxPlays > 0 && timesPlayed >= maxPlays) || Random.value > chance)
+        if (now - lastPlayTime < cooldown || (maxPlays > 0 && timesPlayed >= maxPlays))
         {
-            return false;
+            return null;
         }
+
+        // Every clip that's been filled in
+        System.Collections.Generic.List<AudioClip> options = new System.Collections.Generic.List<AudioClip>();
+        if (clip != null)
+        {
+            options.Add(clip);
+        }
+        foreach (AudioClip c in variations ?? new AudioClip[0])
+        {
+            if (c != null && !options.Contains(c))
+            {
+                options.Add(c);
+            }
+        }
+        if (options.Count == 0 || Random.value > chance)
+        {
+            return null;
+        }
+        if (options.Count > 1)
+        {
+            options.Remove(lastClip); // no immediate repeats
+        }
+
+        AudioClip picked = options[Random.Range(0, options.Count)];
+        lastClip = picked;
         lastPlayTime = now;
         timesPlayed++;
-        return true;
+        return picked;
     }
 }
 

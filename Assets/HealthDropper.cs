@@ -21,10 +21,7 @@ public class HealthDropper : MonoBehaviour
     [SerializeField] private float orbSize = 2.5f;
     [SerializeField] private Color orbColor = new Color(0.3f, 1f, 0.4f);
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect dropSound = new SoundEffect();
-    [Tooltip("Plays when the player picks an orb up.")]
-    [SerializeField] private SoundEffect pickupSound = new SoundEffect();
+    public static event System.Action OrbDropped; // any health orb dropped (GameAudio plays the drop sound)
 
     private Health health;
     private Collider2D bodyCollider;
@@ -77,8 +74,8 @@ public class HealthDropper : MonoBehaviour
         HealthPickup pickup = pickupPrefab != null
             ? Instantiate(pickupPrefab, position, Quaternion.identity)
             : HealthPickup.CreateDefault(position, orbSize, orbColor);
-        pickup.Setup(healAmount, orbLifetime, pickupSound);
-        dropSound.Play();
+        pickup.Setup(healAmount, orbLifetime);
+        OrbDropped?.Invoke();
 
         Rigidbody2D rb = pickup.GetComponent<Rigidbody2D>();
         if (rb != null)

@@ -30,12 +30,6 @@ public class GameUI : MonoBehaviour
     [Tooltip("Seconds between a defeat and the end screen appearing (so the defeat animation can play).")]
     [SerializeField] private float endScreenDelay = 1.5f;
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect buttonClickSound = new SoundEffect();
-    [SerializeField] private SoundEffect pauseSound = new SoundEffect();
-    [Tooltip("Plays when the boss bar appears (the battle starts).")]
-    [SerializeField] private SoundEffect bossBarSound = new SoundEffect();
-
     private Health playerHealth;
     private SpecialMeter special;
     private BossAI boss;
@@ -187,7 +181,7 @@ public class GameUI : MonoBehaviour
         if (show && !bossBarShown)
         {
             bossBarShown = true;
-            bossBarSound.Play();
+            GameAudio.Play(GameAudio.UISound.BossBar);
         }
         bossPanel.EnableInClassList("faded", !show);
         bossPanel.EnableInClassList("phase2", boss.InPhase2);
@@ -231,7 +225,7 @@ public class GameUI : MonoBehaviour
         paused = true;
         Time.timeScale = 0f;
         pauseMenu.RemoveFromClassList("hidden");
-        pauseSound.Play();
+        GameAudio.Play(GameAudio.UISound.Pause);
         resumeButton.Focus();
     }
 
@@ -298,7 +292,7 @@ public class GameUI : MonoBehaviour
     {
         button.clicked += () =>
         {
-            buttonClickSound.Play();
+            GameAudio.Play(GameAudio.UISound.ButtonClick);
             action();
         };
     }

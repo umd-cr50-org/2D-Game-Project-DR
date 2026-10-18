@@ -14,7 +14,7 @@ public class Projectile : MonoBehaviour
     [SerializeField] private LayerMask hitLayers = ~0;
     [SerializeField] private bool rotateToDirection = true;
 
-    public SoundEffect ImpactSound { get; set; } // set by MagicCaster; plays when the projectile hits anything
+    public event System.Action Impacted; // the projectile hit something (MagicCaster passes it on to GameAudio)
 
     private GameObject owner;
     private Vector2 velocity;
@@ -81,7 +81,7 @@ public class Projectile : MonoBehaviour
                 attacker = owner,
             });
             // Hittable or solid scenery: either way the projectile is spent
-            ImpactSound?.Play();
+            Impacted?.Invoke();
             transform.position = hit.centroid;
             Destroy(gameObject);
             return;

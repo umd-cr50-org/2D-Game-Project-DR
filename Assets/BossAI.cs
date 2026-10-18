@@ -144,14 +144,11 @@ public class BossAI : CharacterInput
     [Tooltip("Optional animator states played while vanishing / reappearing.")]
     [SerializeField] private string teleportOutAnimation = "";
     [SerializeField] private string teleportInAnimation = "";
-    [SerializeField] private SoundEffect teleportOutSound = new SoundEffect();
-    [SerializeField] private SoundEffect teleportInSound = new SoundEffect();
 
     [Header ("Healing (teleport heal + heal ability, both play Heal Animation)")]
     [Tooltip("Animator state for both heals.")]
     [SerializeField] private string healAnimation = "Boss_Magic";
     [SerializeField] private Color healGlowColor = new Color(0.3f, 1f, 0.45f, 0.55f);
-    [SerializeField] private SoundEffect healSound = new SoundEffect();
     [Tooltip("Teleport heal: health recovered after each health teleport, as a fraction of max health (0.05 = 5%). 0 = off.")]
     [SerializeField, Range(0f, 1f)] private float teleportHealAmount = 0.05f;
     [Tooltip("How long the teleport heal takes (the boss stands casting; hits don't stop this one).")]
@@ -171,20 +168,15 @@ public class BossAI : CharacterInput
     [Tooltip("When its gauge is full, the boss uses its ultimate once the gap to the player is at most this (keep it smaller than the Ultimate Ability radius so it reaches).")]
     [SerializeField] private float ultimateUseGap = 12f;
 
-    [Header ("Sounds")]
-    [Tooltip("Plays when the battle starts (e.g. a roar).")]
-    [SerializeField] private SoundEffect battleStartSound = new SoundEffect();
-    [Tooltip("Plays when phase 2 starts.")]
-    [SerializeField] private SoundEffect phase2Sound = new SoundEffect();
-    [SerializeField] private SoundEffect shockwaveSound = new SoundEffect();
-
     [SerializeField] private bool logDecisions; // prints what the boss decides to the Console
 
     public bool InPhase2 { get; private set; }
     public float Phase2At => phase2At;
     public event System.Action EnteredPhase2;
-    public event System.Action BattleBegan; // the battle just started (CharacterVoice plays battle lines)
+    public event System.Action BattleBegan; // the battle just started (GameAudio plays battle lines)
     public event System.Action TeleportStarted; // the boss just began a teleport
+    public event System.Action HealStarted; // the boss just began a heal (teleport heal or heal ability)
+    public event System.Action ShockwaveStarted; // the boss just began a shockwave
     private float ActionCooldown => actionCooldown * (InPhase2 ? phase2CooldownMultiplier : 1f);
 
     // This frame's "button presses" (read by PlayerController / PlayerAttack after this script runs)
@@ -334,7 +326,6 @@ public class BossAI : CharacterInput
                 if (gap <= battleStartGap)
                 {
                     Log("Battle start");
-                    battleStartSound.Play();
                     BattleBegan?.Invoke();
                     SetState(State.Pursue);
                     Pursue();
@@ -714,7 +705,6 @@ public class BossAI : CharacterInput
             PlayAnimation(teleportOutAnimation, null);
         }
         UpdateHealGlow(false); // a teleport cuts a heal short
-        teleportOutSound.Play();
         TeleportStarted?.Invoke();
         SetState(State.Teleport);
         Log("teleport: " + reason);
@@ -747,7 +737,6 @@ public class BossAI : CharacterInput
                 body.HoldBodyAnimation = true;
                 PlayAnimation(teleportInAnimation, null);
             }
-            teleportInSound.Play();
             return;
         }
 
@@ -786,8 +775,8 @@ public class BossAI : CharacterInput
         body.Interrupt();
         body.HoldBodyAnimation = true;
         PlayAnimation(healAnimation, null);
-        healSound.Play();
         SetState(State.Healing);
+        HealStarted?.Invoke();
         Log($"{reason} (+{fractionOfMax * health.Max:0.#} health over {duration:0.0}s)");
     }
 
@@ -800,7 +789,7 @@ public class BossAI : CharacterInput
             SetState(State.Cooldown);
             return;
         }
-        health.Heal(healPerSecond * Time.deltaTime, playSound: false);
+        health.Heal(healPerSecond * Time.deltaTime);
         healLastHealth = health.Current;
         UpdateHealGlow(true);
     }
@@ -909,6 +898,7 @@ public class BossAI : CharacterInput
         body.HoldBodyAnimation = true;
         PlayAnimation(shockwaveAnimation, null);
         SetState(State.Shockwave);
+        ShockwaveStarted?.Invoke();
         Log("shockwave");
     }
 
@@ -921,7 +911,6 @@ public class BossAI : CharacterInput
                 return;
             }
             shockwaveFired = true;
-            shockwaveSound.Play();
             timer = Time.time + shockwaveRecovery;
             if (gap <= shockwaveReach)
             {
@@ -975,7 +964,6 @@ public class BossAI : CharacterInput
         InPhase2 = true;
         Log("Phase 2");
         EnteredPhase2?.Invoke();
-        phase2Sound.Play();
 
         // Stronger magic
         caster.Count = phase2ProjectileCount;

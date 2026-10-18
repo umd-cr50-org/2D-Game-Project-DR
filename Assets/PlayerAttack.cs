@@ -38,11 +38,6 @@ public class PlayerAttack : MonoBehaviour
 
         [Tooltip("Where this attack hits. Select the Player and set Preview Attack to drag it around in the Scene view.")]
         public Hitbox hitbox = new Hitbox();
-
-        [Tooltip("Plays when this attack starts (the swing).")]
-        public SoundEffect swingSound = new SoundEffect();
-        [Tooltip("Plays when this attack lands on something.")]
-        public SoundEffect hitSound = new SoundEffect();
     }
 
     [System.Serializable]
@@ -167,6 +162,8 @@ public class PlayerAttack : MonoBehaviour
     private float cancelTime;
     private float nextComboTime;
 
+    public event System.Action<int> AttackStarted; // attack number 1-4 (GameAudio plays its swing sound)
+    public event System.Action<int> AttackLanded; // attack number 1-4 hit something hittable
     public bool IsAttacking => isAttacking;
     public bool IsAirAttacking => isAttacking && isAerial;
     private int MaxHits => Mathf.Min(attacks.Length, attackBools.Length);
@@ -298,7 +295,7 @@ public class PlayerAttack : MonoBehaviour
         cancelTime = hitLength * timing.cancelPoint;
 
         SetAttackBool(step);
-        timing.swingSound.Play();
+        AttackStarted?.Invoke(step);
         if (anim != null)
         {
             anim.speed = timing.playbackSpeed;
@@ -397,7 +394,7 @@ public class PlayerAttack : MonoBehaviour
             }
             if (hittable != null)
             {
-                attacks[currentAttack - 1].hitSound.Play();
+                AttackLanded?.Invoke(currentAttack);
             }
             hittable?.OnHit(new AttackHitInfo
             {

@@ -28,11 +28,6 @@ public class Health : MonoBehaviour, IHittable
     [Tooltip("Animator state played when health reaches 0 (e.g. Player_Lose / Boss_Lose).")]
     [SerializeField] private string defeatAnimation = "";
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect hurtSound = new SoundEffect();
-    [SerializeField] private SoundEffect defeatSound = new SoundEffect();
-    [SerializeField] private SoundEffect healSound = new SoundEffect();
-
     public float Max => maxHealth;
     public float Current { get; private set; }
     public float Fraction => Current / maxHealth;
@@ -81,7 +76,6 @@ public class Health : MonoBehaviour, IHittable
             Die();
             return;
         }
-        hurtSound.Play();
         // Some hits (the boss's shockwave) stun longer than usual; super armor (0) still ignores stun entirely
         if (hitStunTime > 0f)
         {
@@ -89,25 +83,19 @@ public class Health : MonoBehaviour, IHittable
         }
     }
 
-    // playSound: false for healing spread over many frames (the boss's heal), which plays its own sound once
-    public void Heal(float amount, bool playSound = true)
+    public void Heal(float amount)
     {
         if (IsDead || amount <= 0f)
         {
             return;
         }
         Current = Mathf.Min(maxHealth, Current + amount);
-        if (playSound)
-        {
-            healSound.Play();
-        }
         Changed?.Invoke(this);
     }
 
     private void Die()
     {
         IsDead = true;
-        defeatSound.Play();
         body.Defeat(defeatAnimation);
         Died?.Invoke(this);
     }

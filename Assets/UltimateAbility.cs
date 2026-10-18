@@ -37,14 +37,11 @@ public class UltimateAbility : MonoBehaviour
     [SerializeField] private Color warningColor = new Color(0.4f, 0.75f, 1f, 0.25f);
     [SerializeField] private Color blastColor = new Color(0.7f, 0.9f, 1f, 0.85f);
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect windupSound = new SoundEffect();
-    [SerializeField] private SoundEffect blastSound = new SoundEffect();
-
     public bool IsActive { get; private set; }
     public bool IsReady => !IsActive && meter != null && meter.IsFull;
     public float Radius => radius;
-    public event System.Action Started; // the ultimate just began (CharacterVoice plays its line)
+    public event System.Action Started; // the ultimate just began (GameAudio plays its line and wind-up sound)
+    public event System.Action Blasted; // the blast just went off
 
     private PlayerController body;
     private SpecialMeter meter;
@@ -148,14 +145,13 @@ public class UltimateAbility : MonoBehaviour
             health.Invulnerable = true;
         }
         PlayState(animationState);
-        windupSound.Play();
         Started?.Invoke();
     }
 
     private void Blast()
     {
         blasted = true;
-        blastSound.Play();
+        Blasted?.Invoke();
 
         Vector2 center = Center();
         System.Collections.Generic.HashSet<IHittable> done = new System.Collections.Generic.HashSet<IHittable>();

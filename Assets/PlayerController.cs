@@ -114,11 +114,8 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Characters can't stand on each other: anyone landing on a character's head is pushed off sideways at this speed.")]
     [SerializeField] private float slideOffCharacterSpeed = 25f;
 
-    [Header ("Sounds")]
-    [SerializeField] private SoundEffect jumpSound = new SoundEffect();
-    [SerializeField] private SoundEffect doubleJumpSound = new SoundEffect();
-    [SerializeField] private SoundEffect dashSound = new SoundEffect();
-    [SerializeField] private SoundEffect landSound = new SoundEffect();
+    public event System.Action Jumped; // first jump (GameAudio plays the jump sound)
+    public event System.Action DoubleJumped;
 
 
     private void Awake()
@@ -284,7 +281,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Called by CharacterVoice when this character wins: stops for good and plays the win animation (if it exists)
+    // Called by GameAudio when this character wins: stops for good and plays the win animation (if it exists)
     public void Celebrate(string winState)
     {
         if (isDefeated || isCelebrating)
@@ -570,7 +567,6 @@ public class PlayerController : MonoBehaviour
             rb.gravityScale = 0f; // hang in place for the throw and the warp
             Face(dashDirection);
             SetAnimBool("Dashing", true);
-            dashSound.Play();
             lastTapTime = -1f; // a third tap shouldn't count as another double tap
         }
 
@@ -764,7 +760,7 @@ public class PlayerController : MonoBehaviour
             jumpsRemaining--;
             if (jumpsRemaining == maxJumps - 1)
             {
-                jumpSound.Play(); // the first jump (the double jump has its own sound below)
+                Jumped?.Invoke(); // the first jump (the double jump has its own event below)
             }
 
             // Only the jump after the first one has been used counts as a double jump
@@ -772,7 +768,7 @@ public class PlayerController : MonoBehaviour
             {
                 isDoubleJumping = true;
                 startedDoubleJump = true;
-                doubleJumpSound.Play();
+                DoubleJumped?.Invoke();
             }
         }
 
@@ -842,12 +838,7 @@ public class PlayerController : MonoBehaviour
             lastGroundedTime = Time.time;
         }
         bool justJumped = Time.time - lastJumpTime < jumpGroundIgnoreTime;
-        bool wasInAir = isInAir;
         isInAir = justJumped || (!isGrounded && Time.time - lastGroundedTime > airborneGraceTime);
-        if (wasInAir && !isInAir && isGrounded)
-        {
-            landSound.Play();
-        }
         if (!isInAir)
         {
             airSince = -1f;
