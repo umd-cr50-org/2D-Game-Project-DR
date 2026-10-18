@@ -44,6 +44,7 @@ public class UltimateAbility : MonoBehaviour
     public bool IsActive { get; private set; }
     public bool IsReady => !IsActive && meter != null && meter.IsFull;
     public float Radius => radius;
+    public event System.Action Started; // the ultimate just began (CharacterVoice plays its line)
 
     private PlayerController body;
     private SpecialMeter meter;
@@ -148,6 +149,7 @@ public class UltimateAbility : MonoBehaviour
         }
         PlayState(animationState);
         windupSound.Play();
+        Started?.Invoke();
     }
 
     private void Blast()

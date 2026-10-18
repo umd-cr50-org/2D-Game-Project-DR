@@ -89,14 +89,18 @@ public class Health : MonoBehaviour, IHittable
         }
     }
 
-    public void Heal(float amount)
+    // playSound: false for healing spread over many frames (the boss's heal), which plays its own sound once
+    public void Heal(float amount, bool playSound = true)
     {
         if (IsDead || amount <= 0f)
         {
             return;
         }
         Current = Mathf.Min(maxHealth, Current + amount);
-        healSound.Play();
+        if (playSound)
+        {
+            healSound.Play();
+        }
         Changed?.Invoke(this);
     }
 

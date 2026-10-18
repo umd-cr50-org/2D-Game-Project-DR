@@ -2018,23 +2018,54 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   teleportInSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
-  ultimateUseGap: 12
-  battleStartSound:
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  healAnimation: Boss_Magic
+  healGlowColor: {r: 0.3, g: 1, b: 0.45, a: 0.55}
+  healSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  teleportHealAmount: 0.05
+  teleportHealTime: 0.8
+  healAbilityAmount: 0.15
+  healChannelTime: 2.5
+  healBelowHealth: 0.6
+  healMinGapToPlayer: 20
+  healCooldown: 15
+  ultimateUseGap: 12
+  battleStartSound:
+    clip: {fileID: 8300000, guid: 6aa5890c603693841aa85e41838aee15, type: 3}
+    volume: 0.694
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   phase2Sound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   shockwaveSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   logDecisions: 0
 --- !u!114 &582222798
 MonoBehaviour:
@@ -2067,10 +2098,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 2
     clip: {fileID: 7400000, guid: ed8f766713fc4f04db7d346172dac6cb, type: 2}
     matchClipLength: 1
@@ -2089,10 +2126,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 3
     clip: {fileID: 7400000, guid: 641eaf15bc36a7448be962327c8b3ab2, type: 2}
     matchClipLength: 1
@@ -2111,10 +2154,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 4 (finisher)
     clip: {fileID: 7400000, guid: 5dcc6af7e2b688b4a82d41c25af05ce1, type: 2}
     matchClipLength: 1
@@ -2133,10 +2182,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   hittableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -2175,21 +2230,33 @@ MonoBehaviour:
   freeFallTint: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   slideOffCharacterSpeed: 25
   jumpSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 48b080fb0f90b2044ad77fb86b83a65b, type: 3}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   doubleJumpSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   dashSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   landSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &582222800
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2210,17 +2277,26 @@ MonoBehaviour:
   blinkInterval: 0.08
   defeatAnimation: Boss_Lose
   hurtSound:
-    clip: {fileID: 0}
-    volume: 1
+    clip: {fileID: 8300000, guid: 6b4261edb105575469f5f9094ece67d0, type: 3}
+    volume: 0.169
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   defeatSound:
-    clip: {fileID: 0}
-    volume: 1
+    clip: {fileID: 8300000, guid: cdbf030acf3c744419c0fba94f8f7f44, type: 3}
+    volume: 0.702
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   healSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 16b631b7a3c9a7d4488e1e40cf49c6af, type: 3}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &582222801
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2252,17 +2328,26 @@ MonoBehaviour:
   castEndAnimation: Player_Idle
   castEndAirAnimation: Player_Fall
   castSound:
-    clip: {fileID: 0}
-    volume: 1
+    clip: {fileID: 8300000, guid: 2e70b7ca4d602c1428b3627ade555234, type: 3}
+    volume: 0.285
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   fireSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 2523a6ff54cb0d54dabb0cb4b53d6639, type: 3}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   impactSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &582222802
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2286,10 +2371,16 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   pickupSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &582222803
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2315,13 +2406,19 @@ MonoBehaviour:
   warningColor: {r: 1, g: 0.027667986, b: 0.023529427, a: 0.25}
   blastColor: {r: 0.17879577, g: 0, b: 0.3679245, a: 0.85}
   windupSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: b4f689e5de51aba488e0d41035020997, type: 3}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   blastSound:
-    clip: {fileID: 0}
-    volume: 1
+    clip: {fileID: 8300000, guid: 3742ccc5dcfd0cf47a7e2eacce50f259, type: 3}
+    volume: 0.355
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &582222804
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2339,7 +2436,7 @@ MonoBehaviour:
   gainPerDamageTaken: 3
   gainFromOwnMagic: 0
   chargeRate: 20
-  chargeAnimation: 
+  chargeAnimation: Boss_Magic
   chargeEndAnimation: Player_Idle
   chargeGlowColor: {r: 0.4, g: 0.75, b: 1, a: 0.6}
   chargeGlowSize: 1.6
@@ -2347,14 +2444,23 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   chargeLoopSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   fullSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -3909,14 +4015,23 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   pauseSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   bossBarSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &1002187336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5428,18 +5543,30 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   doubleJumpSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   dashSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   landSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!1818360608 &1690322784
 PositionConstraint:
   m_ObjectHideFlags: 0
@@ -5511,10 +5638,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 2
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5533,10 +5666,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 3
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5555,10 +5694,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   - name: Attack 4 (finisher)
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5577,10 +5722,16 @@ MonoBehaviour:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
     hitSound:
       clip: {fileID: 0}
       volume: 1
       pitchVariation: 0.05
+      cooldown: 0
+      chance: 1
+      maxPlays: 0
   hittableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -5616,14 +5767,23 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   chargeLoopSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   fullSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &1690322788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5647,14 +5807,23 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   defeatSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   healSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: b13f1fb93f685754e958e162ec8b7224, type: 3}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &1690322789
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5689,14 +5858,23 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   fireSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   impactSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!114 &1690322790
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5725,10 +5903,16 @@ MonoBehaviour:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
   blastSound:
     clip: {fileID: 0}
     volume: 1
     pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!1 &1755212591
 GameObject:
   m_ObjectHideFlags: 0

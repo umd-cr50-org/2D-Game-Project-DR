@@ -103,9 +103,11 @@ public class PlayerController : MonoBehaviour
     private PlayerController standingOnCharacter; // the character whose head we're on top of this frame (slide off it)
     private float stunEndTime = -1f; // hit stun: no control until then (see TakeHit)
     private bool isDefeated;
+    private bool isCelebrating; // won the fight: posing, no more control
     public bool IsStunned => Time.time < stunEndTime;
     public bool IsDefeated => isDefeated;
-    public bool CanAct => !IsStunned && !isDefeated; // attacks and magic check this too
+    public bool IsCelebrating => isCelebrating;
+    public bool CanAct => !IsStunned && !isDefeated && !isCelebrating; // attacks and magic check this too
     public Color BaseColor => isFreeFalling ? freeFallTint : normalColor; // the sprite's color when not flashing
 
     [Header ("Characters")]
@@ -228,7 +230,7 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity = alongGround * vx;
         }
         SetAnimBool("Walking", false);
-        if (isDefeated)
+        if (isDefeated || isCelebrating)
         {
             SetAnimBool("InAir", false); // keep air transitions from pulling the animator out of the defeat pose
         }
@@ -239,7 +241,7 @@ public class PlayerController : MonoBehaviour
     // and sends it flying with the hit's knockback. No control until stunTime is over.
     public void TakeHit(Vector2 knockback, float stunTime)
     {
-        if (isDefeated)
+        if (isDefeated || isCelebrating)
         {
             return;
         }
@@ -259,7 +261,7 @@ public class PlayerController : MonoBehaviour
     // Called by Health at 0 health: stops for good and plays the defeat animation (if the animator has it)
     public void Defeat(string defeatState)
     {
-        if (isDefeated)
+        if (isDefeated || isCelebrating)
         {
             return;
         }
@@ -273,6 +275,31 @@ public class PlayerController : MonoBehaviour
         if (anim != null && !string.IsNullOrEmpty(defeatState))
         {
             int stateHash = Animator.StringToHash(defeatState);
+            if (anim.HasState(0, stateHash))
+            {
+                anim.speed = 1f;
+                anim.Play(stateHash, 0, 0f);
+                anim.Update(0f);
+            }
+        }
+    }
+
+    // Called by CharacterVoice when this character wins: stops for good and plays the win animation (if it exists)
+    public void Celebrate(string winState)
+    {
+        if (isDefeated || isCelebrating)
+        {
+            return;
+        }
+        Interrupt();
+        isCelebrating = true;
+        foreach (string parameter in new[] { "Walking", "Jumping", "DoubleJumping", "Dashing", "FreeFall", "InAir" })
+        {
+            SetAnimBool(parameter, false);
+        }
+        if (anim != null && anim.runtimeAnimatorController != null && !string.IsNullOrEmpty(winState))
+        {
+            int stateHash = Animator.StringToHash(winState);
             if (anim.HasState(0, stateHash))
             {
                 anim.speed = 1f;
@@ -347,7 +374,7 @@ public class PlayerController : MonoBehaviour
         {
             return; // not using code-driven animations (the player)
         }
-        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking || isDefeated || HoldBodyAnimation)
+        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking || isDefeated || isCelebrating || HoldBodyAnimation)
         {
             return; // attacks and spells play their own animations
         }

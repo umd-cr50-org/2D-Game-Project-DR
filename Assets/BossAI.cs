@@ -27,7 +27,7 @@ using UnityEngine.Serialization;
 [RequireComponent(typeof(PlayerController), typeof(PlayerAttack), typeof(Rigidbody2D))]
 public class BossAI : CharacterInput
 {
-    private enum State { Dormant, Pursue, JumpAttack, Attacking, Casting, Shockwave, Ultimate, Teleport, Cooldown }
+    private enum State { Dormant, Pursue, JumpAttack, Attacking, Casting, Shockwave, Ultimate, Teleport, Healing, Cooldown }
 
     [Header ("Movement")]
     [Tooltip("When the game starts, copy the player's gravity, jump, dash and slope settings onto the boss so it moves like the player.")]
@@ -147,6 +147,26 @@ public class BossAI : CharacterInput
     [SerializeField] private SoundEffect teleportOutSound = new SoundEffect();
     [SerializeField] private SoundEffect teleportInSound = new SoundEffect();
 
+    [Header ("Healing (teleport heal + heal ability, both play Heal Animation)")]
+    [Tooltip("Animator state for both heals.")]
+    [SerializeField] private string healAnimation = "Boss_Magic";
+    [SerializeField] private Color healGlowColor = new Color(0.3f, 1f, 0.45f, 0.55f);
+    [SerializeField] private SoundEffect healSound = new SoundEffect();
+    [Tooltip("Teleport heal: health recovered after each health teleport, as a fraction of max health (0.05 = 5%). 0 = off.")]
+    [SerializeField, Range(0f, 1f)] private float teleportHealAmount = 0.05f;
+    [Tooltip("How long the teleport heal takes (the boss stands casting; hits don't stop this one).")]
+    [SerializeField] private float teleportHealTime = 0.8f;
+    [Tooltip("Heal ability: health recovered if the channel finishes, as a fraction of max health. 0 = off.")]
+    [SerializeField, Range(0f, 1f)] private float healAbilityAmount = 0.15f;
+    [Tooltip("How long the heal ability channels. Health comes back gradually; any hit stops it.")]
+    [SerializeField] private float healChannelTime = 2.5f;
+    [Tooltip("Only uses the heal ability at or below this much health (0.6 = 60%).")]
+    [SerializeField, Range(0f, 1f)] private float healBelowHealth = 0.6f;
+    [Tooltip("...and only when the player is at least this far away (body to body), so it has time.")]
+    [SerializeField] private float healMinGapToPlayer = 20f;
+    [Tooltip("Minimum seconds between heal ability uses.")]
+    [SerializeField] private float healCooldown = 15f;
+
     [Header ("Ultimate (needs a Special Meter and an Ultimate Ability on the boss)")]
     [Tooltip("When its gauge is full, the boss uses its ultimate once the gap to the player is at most this (keep it smaller than the Ultimate Ability radius so it reaches).")]
     [SerializeField] private float ultimateUseGap = 12f;
@@ -163,6 +183,8 @@ public class BossAI : CharacterInput
     public bool InPhase2 { get; private set; }
     public float Phase2At => phase2At;
     public event System.Action EnteredPhase2;
+    public event System.Action BattleBegan; // the battle just started (CharacterVoice plays battle lines)
+    public event System.Action TeleportStarted; // the boss just began a teleport
     private float ActionCooldown => actionCooldown * (InPhase2 ? phase2CooldownMultiplier : 1f);
 
     // This frame's "button presses" (read by PlayerController / PlayerAttack after this script runs)
@@ -196,6 +218,12 @@ public class BossAI : CharacterInput
     private float nextShockwaveTime;
     private bool[] teleportUsed = new bool[0]; // which Teleport At Health thresholds have fired
     private bool teleportPending; // a threshold was just crossed: teleport as soon as possible
+    private float healEndTime;
+    private float healPerSecond;
+    private bool healInterruptible;
+    private float healLastHealth;
+    private float nextHealTime;
+    private SpriteRenderer healGlow;
     private Vector2 teleportTarget;
     private bool teleportArrived;
     private SpriteRenderer sprite;
@@ -307,6 +335,7 @@ public class BossAI : CharacterInput
                 {
                     Log("Battle start");
                     battleStartSound.Play();
+                    BattleBegan?.Invoke();
                     SetState(State.Pursue);
                     Pursue();
                 }
@@ -334,6 +363,10 @@ public class BossAI : CharacterInput
 
             case State.Shockwave:
                 Shockwave();
+                break;
+
+            case State.Healing:
+                HealingState();
                 break;
 
             case State.Teleport:
@@ -395,6 +428,15 @@ public class BossAI : CharacterInput
         if (body.IsFreeFalling)
         {
             horizontal = direction; // helpless: just drift toward the player
+            return;
+        }
+
+        // Hurt and the player keeping their distance: channel a heal
+        if (health != null && healAbilityAmount > 0f && Time.time >= nextHealTime && body.IsGrounded
+            && health.Fraction <= healBelowHealth && gap >= healMinGapToPlayer)
+        {
+            nextHealTime = Time.time + healCooldown;
+            BeginHeal(healAbilityAmount, healChannelTime, interruptible: true, "heal ability");
             return;
         }
 
@@ -671,7 +713,9 @@ public class BossAI : CharacterInput
             body.HoldBodyAnimation = true;
             PlayAnimation(teleportOutAnimation, null);
         }
+        UpdateHealGlow(false); // a teleport cuts a heal short
         teleportOutSound.Play();
+        TeleportStarted?.Invoke();
         SetState(State.Teleport);
         Log("teleport: " + reason);
     }
@@ -715,12 +759,105 @@ public class BossAI : CharacterInput
             {
                 health.Invulnerable = false;
             }
+            if (teleportHealAmount > 0f && health != null && !health.IsDead)
+            {
+                BeginHeal(teleportHealAmount, teleportHealTime, interruptible: false, "teleport heal");
+                return;
+            }
             if (body.HoldBodyAnimation)
             {
                 ReturnToBodyAnimation();
             }
             SetState(State.Pursue);
         }
+    }
+
+    // ---------- Healing ----------
+
+    // Stands still casting (Heal Animation, green glow) while health comes back gradually over the duration.
+    // Interruptible heals stop the moment the boss takes damage.
+    private void BeginHeal(float fractionOfMax, float duration, bool interruptible, string reason)
+    {
+        duration = Mathf.Max(duration, 0.05f);
+        healPerSecond = fractionOfMax * health.Max / duration;
+        healEndTime = Time.time + duration;
+        healInterruptible = interruptible;
+        healLastHealth = health.Current;
+        body.Interrupt();
+        body.HoldBodyAnimation = true;
+        PlayAnimation(healAnimation, null);
+        healSound.Play();
+        SetState(State.Healing);
+        Log($"{reason} (+{fractionOfMax * health.Max:0.#} health over {duration:0.0}s)");
+    }
+
+    private void HealingState()
+    {
+        if (Time.time >= healEndTime)
+        {
+            EndHeal();
+            timer = Time.time + ActionCooldown * 0.5f; // a short breather after healing
+            SetState(State.Cooldown);
+            return;
+        }
+        health.Heal(healPerSecond * Time.deltaTime, playSound: false);
+        healLastHealth = health.Current;
+        UpdateHealGlow(true);
+    }
+
+    // Called from OnHealthChanged: damage during an interruptible heal cancels it
+    private void CheckHealInterrupted(Health h)
+    {
+        if (state != State.Healing)
+        {
+            return;
+        }
+        if (healInterruptible && h.Current < healLastHealth)
+        {
+            Log("heal interrupted");
+            EndHeal();
+            timer = Time.time + ActionCooldown;
+            SetState(State.Cooldown);
+            return;
+        }
+        healLastHealth = h.Current;
+    }
+
+    private void EndHeal()
+    {
+        UpdateHealGlow(false);
+        ReturnToBodyAnimation();
+    }
+
+    private void UpdateHealGlow(bool on)
+    {
+        if (!on)
+        {
+            if (healGlow != null)
+            {
+                healGlow.enabled = false;
+            }
+            return;
+        }
+        if (healGlow == null)
+        {
+            GameObject go = new GameObject("Heal Glow");
+            go.transform.SetParent(transform, false);
+            healGlow = go.AddComponent<SpriteRenderer>();
+            healGlow.sprite = MagicCaster.GetOrbSprite();
+            if (sprite != null)
+            {
+                healGlow.sortingLayerID = sprite.sortingLayerID;
+                healGlow.sortingOrder = sprite.sortingOrder - 1;
+            }
+        }
+        healGlow.enabled = true;
+        healGlow.color = healGlowColor;
+        Bounds b = bodyCollider != null ? bodyCollider.bounds : new Bounds(transform.position, Vector3.one);
+        float worldSize = Mathf.Max(b.size.x, b.size.y) * 1.6f * (1f + 0.08f * Mathf.Sin(Time.time * 10f));
+        Vector3 s = transform.lossyScale;
+        healGlow.transform.position = b.center;
+        healGlow.transform.localScale = new Vector3(worldSize / Mathf.Abs(s.x), worldSize / Mathf.Abs(s.y), 1f);
     }
 
     private void SetAlpha(float alpha)
@@ -815,6 +952,12 @@ public class BossAI : CharacterInput
 
     private void OnHealthChanged(Health h)
     {
+        if (h.IsDead)
+        {
+            UpdateHealGlow(false);
+        }
+        CheckHealInterrupted(h);
+
         // Health teleports: each threshold fires once (a big hit past several only teleports once)
         for (int i = 0; i < Mathf.Min(teleportAtHealth.Length, teleportUsed.Length); i++)
         {
