@@ -1734,6 +1734,10 @@ GameObject:
   - component: {fileID: 582222798}
   - component: {fileID: 582222797}
   - component: {fileID: 582222800}
+  - component: {fileID: 582222801}
+  - component: {fileID: 582222802}
+  - component: {fileID: 582222804}
+  - component: {fileID: 582222803}
   m_Layer: 0
   m_Name: Boss
   m_TagString: Untagged
@@ -1928,6 +1932,9 @@ MonoBehaviour:
   airAnimation: Boss_Jumping
   runAnimation: Boss_Running
   groundAnimation: Boss_Idle
+  attackAnimationPrefix: Boss_Attack
+  magicAnimation: Boss_Magic
+  shockwaveAnimation: Boss_Attack3
   battleStartGap: 50
   actionCooldown: 2
   pressInterval: 0.12
@@ -1943,12 +1950,39 @@ MonoBehaviour:
   dashMaxGap: 35
   magicMinGap: 10
   magicMaxGap: 60
-  magicOnlyWhenRunning: 1
+  magicOnlyWhenRunning: 0
   runningSpeed: 15
   runningTime: 0.4
+  belowGap: 4
+  shockwaveReach: 12
+  shockwaveWindup: 0.25
+  shockwaveRecovery: 0.3
+  shockwaveDamage: 3
+  shockwaveKnockback: {x: 55, y: 35}
+  shockwaveStun: 0.6
+  shockwaveCooldown: 3
   phase2At: 0.5
   phase2CooldownMultiplier: 0.5
   phase2SpeedMultiplier: 1.25
+  phase2ProjectileCount: 3
+  phase2ProjectileSpeedMultiplier: 1.3
+  phase2ProjectileDamageMultiplier: 1.25
+  phase2ProjectileColor: {r: 0.75, g: 0.35, b: 1, a: 1}
+  phase2ProjectilePrefab: {fileID: 0}
+  phase2MagicAnyTime: 1
+  ultimateUseGap: 12
+  battleStartSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  phase2Sound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  shockwaveSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
   logDecisions: 0
 --- !u!114 &582222798
 MonoBehaviour:
@@ -1977,6 +2011,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 2
     clip: {fileID: 7400000, guid: ed8f766713fc4f04db7d346172dac6cb, type: 2}
     matchClipLength: 1
@@ -1991,6 +2033,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 3
     clip: {fileID: 7400000, guid: 641eaf15bc36a7448be962327c8b3ab2, type: 2}
     matchClipLength: 1
@@ -2005,6 +2055,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 4 (finisher)
     clip: {fileID: 7400000, guid: 5dcc6af7e2b688b4a82d41c25af05ce1, type: 2}
     matchClipLength: 1
@@ -2019,6 +2077,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 2
       knockback: {x: 6, y: 4}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   hittableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -2056,6 +2122,22 @@ MonoBehaviour:
   freeFallDriftMultiplier: 0.6
   freeFallTint: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   slideOffCharacterSpeed: 25
+  jumpSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  doubleJumpSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  dashSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  landSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!114 &582222800
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2075,6 +2157,152 @@ MonoBehaviour:
   blinkColor: {r: 1, g: 0.2, b: 0.2, a: 1}
   blinkInterval: 0.08
   defeatAnimation: Boss_Lose
+  hurtSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  defeatSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  healSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &582222801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582222791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08b393475ae72d54091e810512ab47f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MagicCaster
+  castTime: 0.35
+  recoveryTime: 0.25
+  cooldown: 1.5
+  fireFromAnimationEvent: 0
+  meterCost: 25
+  projectilePrefab: {fileID: 0}
+  speed: 45
+  damage: 3
+  knockback: {x: 6, y: 4}
+  lifetime: 2
+  size: 3
+  orbColor: {r: 0.19856939, g: 0.078097194, b: 0.3679245, a: 1}
+  count: 1
+  spreadAngle: 15
+  spawnOffset: {x: 0.6, y: 0.1}
+  castStateName: 
+  castEndAnimation: Player_Idle
+  castEndAirAnimation: Player_Fall
+  castSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  fireSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  impactSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &582222802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582222791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bb87e12ff9e0ea45a61e566d34dd322, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthDropper
+  dropEveryDamage: 12
+  healAmount: 5
+  orbLifetime: 10
+  popSpeed: {x: 15, y: 30}
+  pickupPrefab: {fileID: 0}
+  orbSize: 2.5
+  orbColor: {r: 0.3, g: 1, b: 0.4, a: 1}
+  dropSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  pickupSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &582222803
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582222791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32b1786d62a90c44871df609412bff8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UltimateAbility
+  windup: 1.2
+  recovery: 0.6
+  invulnerable: 1
+  radius: 22
+  flatDamage: 30
+  targetMaxHealthFraction: 0.5
+  knockback: {x: 50, y: 35}
+  hitStun: 0.6
+  animationState: Boss_Limit_Break
+  endAnimation: Boss_Idle
+  warningColor: {r: 1, g: 0.027667986, b: 0.023529427, a: 0.25}
+  blastColor: {r: 0.17879577, g: 0, b: 0.3679245, a: 0.85}
+  windupSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  blastSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &582222804
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582222791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 575d6163232b1f846a7d83811bc25b68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpecialMeter
+  maxMeter: 100
+  gainPerDamageDealt: 4
+  gainPerDamageTaken: 3
+  gainFromOwnMagic: 0
+  chargeRate: 20
+  chargeAnimation: 
+  chargeEndAnimation: Player_Idle
+  chargeGlowColor: {r: 0.4, g: 0.75, b: 1, a: 0.6}
+  chargeGlowSize: 1.6
+  chargeStartSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  chargeLoopSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  fullSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -3625,6 +3853,18 @@ MonoBehaviour:
   pauseKey: 27
   mainMenuScene: MainMenu
   endScreenDelay: 1.5
+  buttonClickSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  pauseSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  bossBarSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!114 &1002187336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4917,6 +5157,8 @@ GameObject:
   - component: {fileID: 1690322786}
   - component: {fileID: 1690322788}
   - component: {fileID: 1690322787}
+  - component: {fileID: 1690322789}
+  - component: {fileID: 1690322790}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5099,6 +5341,22 @@ MonoBehaviour:
   freeFallDriftMultiplier: 0.6
   freeFallTint: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   slideOffCharacterSpeed: 25
+  jumpSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  doubleJumpSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  dashSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  landSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!1818360608 &1690322784
 PositionConstraint:
   m_ObjectHideFlags: 0
@@ -5166,6 +5424,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 2
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5180,6 +5446,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 3
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5194,6 +5468,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 1
       knockback: {x: 3, y: 2}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   - name: Attack 4 (finisher)
     clip: {fileID: 0}
     matchClipLength: 1
@@ -5208,6 +5490,14 @@ MonoBehaviour:
       activeEnd: 0.7
       damage: 2
       knockback: {x: 6, y: 4}
+    swingSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
+    hitSound:
+      clip: {fileID: 0}
+      volume: 1
+      pitchVariation: 0.05
   hittableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -5233,6 +5523,24 @@ MonoBehaviour:
   maxMeter: 100
   gainPerDamageDealt: 4
   gainPerDamageTaken: 3
+  gainFromOwnMagic: 0
+  chargeRate: 20
+  chargeAnimation: 
+  chargeEndAnimation: Player_Idle
+  chargeGlowColor: {r: 0.4, g: 0.75, b: 1, a: 0.6}
+  chargeGlowSize: 1.6
+  chargeStartSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  chargeLoopSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  fullSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!114 &1690322788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5252,6 +5560,92 @@ MonoBehaviour:
   blinkColor: {r: 1, g: 0.2, b: 0.2, a: 1}
   blinkInterval: 0.08
   defeatAnimation: Player_Lose
+  hurtSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  defeatSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  healSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &1690322789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08b393475ae72d54091e810512ab47f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MagicCaster
+  castTime: 0.1
+  recoveryTime: 0.1
+  cooldown: 1.5
+  fireFromAnimationEvent: 0
+  meterCost: 15
+  projectilePrefab: {fileID: 0}
+  speed: 45
+  damage: 2
+  knockback: {x: 6, y: 4}
+  lifetime: 2
+  size: 3
+  orbColor: {r: 0.67630833, g: 0.8580945, b: 0.9622642, a: 1}
+  count: 1
+  spreadAngle: 15
+  spawnOffset: {x: 0.6, y: 0.1}
+  castStateName: Player_Magic
+  castEndAnimation: Player_Idle
+  castEndAirAnimation: Player_Fall
+  castSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  fireSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  impactSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+--- !u!114 &1690322790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32b1786d62a90c44871df609412bff8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UltimateAbility
+  windup: 0.6
+  recovery: 0.5
+  invulnerable: 1
+  radius: 18
+  flatDamage: 15
+  targetMaxHealthFraction: 0
+  knockback: {x: 45, y: 30}
+  hitStun: 0.6
+  animationState: Player_Limit_Break
+  endAnimation: Player_Idle
+  warningColor: {r: 0.4, g: 0.75, b: 1, a: 0.25}
+  blastColor: {r: 0.7, g: 0.9, b: 1, a: 0.85}
+  windupSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+  blastSound:
+    clip: {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
 --- !u!1 &1755212591
 GameObject:
   m_ObjectHideFlags: 0

@@ -14,4 +14,6 @@ public struct AttackHitInfo
     public float damage;
     public Vector2 knockback; // already pointed away from the player (x follows their facing)
     public GameObject attacker;
+    public float hitStun; // optional: a longer stun than the target's usual one (0 = the target's own Hit Stun Time)
+    public bool ignoresInvincibility; // lands even during the target's after-hit invincibility (ultimates)
 }

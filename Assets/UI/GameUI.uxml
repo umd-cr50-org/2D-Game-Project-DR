@@ -26,17 +26,26 @@
                     <ui:VisualElement name="boss-health-fill" class="bar-fill boss-fill" picking-mode="Ignore" />
                     <ui:VisualElement name="boss-phase-marker" class="phase-marker" picking-mode="Ignore" />
                 </ui:VisualElement>
+                <ui:VisualElement name="boss-meter-bar" class="bar boss-meter-bar" picking-mode="Ignore">
+                    <ui:VisualElement name="boss-meter-fill" class="bar-fill boss-meter-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label name="boss-phase" text="PHASE 2" class="boss-phase" />
             </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement name="pause-menu" class="screen overlay hidden">
-            <ui:VisualElement class="menu-box">
+            <ui:VisualElement name="pause-panel" class="menu-box">
                 <ui:Label text="PAUSED" class="menu-title" />
                 <ui:Button name="resume-button" text="Resume" class="menu-button" />
+                <ui:Button name="controls-button" text="Controls" class="menu-button" />
                 <ui:Button name="restart-button" text="Restart" class="menu-button" />
                 <ui:Button name="pause-menu-button" text="Main Menu" class="menu-button" />
                 <ui:Button name="quit-button" text="Quit" class="menu-button" />
+            </ui:VisualElement>
+            <ui:VisualElement name="controls-panel" class="menu-box hidden">
+                <ui:Label text="CONTROLS" class="menu-title" />
+                <ui:Label class="controls-list" text="Move: Arrow keys / A, D&#10;Jump / Double jump: Space&#10;Dash: double tap left or right&#10;Attack (combo): Z&#10;Magic (uses gauge): X&#10;Charge gauge: hold C&#10;Ultimate (full gauge): V&#10;Pause: Esc" />
+                <ui:Button name="controls-back-button" text="Back" class="menu-button" />
             </ui:VisualElement>
         </ui:VisualElement>
 

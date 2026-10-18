@@ -75,6 +75,8 @@ public class PlayerController : MonoBehaviour
 
     private PlayerAttack attack;
     private MagicCaster caster;
+    private SpecialMeter meter;
+    private UltimateAbility ultimate;
 
     public static PlayerController Instance; // the keyboard-controlled player
     public CharacterInput InputSource => input;
@@ -87,7 +89,9 @@ public class PlayerController : MonoBehaviour
     public bool CanDash => !isDashing && !IsAttacking && CanDashNow && Time.time >= nextDashTime; // a dash would start now
     public bool IsCasting => caster != null && caster.IsCasting;
     // Casting magic holds the character in place just like an attack does
-    private bool IsAttacking => (attack != null && attack.IsAttacking) || IsCasting;
+    // Charging the gauge and the ultimate root the character too
+    private bool IsAttacking => (attack != null && attack.IsAttacking) || IsCasting
+        || (meter != null && meter.IsCharging) || (ultimate != null && ultimate.IsActive);
     private bool IsAirAttacking => attack != null && attack.IsAirAttacking;
     private bool isHovering; // gravity is off because an air string is holding the player up
     private bool isInAir; // off the ground for real (see CheckGrounded)
@@ -107,6 +111,12 @@ public class PlayerController : MonoBehaviour
     [Header ("Characters")]
     [Tooltip("Characters can't stand on each other: anyone landing on a character's head is pushed off sideways at this speed.")]
     [SerializeField] private float slideOffCharacterSpeed = 25f;
+
+    [Header ("Sounds")]
+    [SerializeField] private SoundEffect jumpSound = new SoundEffect();
+    [SerializeField] private SoundEffect doubleJumpSound = new SoundEffect();
+    [SerializeField] private SoundEffect dashSound = new SoundEffect();
+    [SerializeField] private SoundEffect landSound = new SoundEffect();
 
 
     private void Awake()
@@ -143,6 +153,8 @@ public class PlayerController : MonoBehaviour
         sr = GetComponentInChildren<SpriteRenderer>();
         attack = GetComponent<PlayerAttack>();
         caster = GetComponent<MagicCaster>();
+        meter = GetComponent<SpecialMeter>();
+        ultimate = GetComponent<UltimateAbility>();
         normalColor = sr.color;
         if (anim != null && anim.runtimeAnimatorController != null)
         {
@@ -270,13 +282,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Interrupt()
+    // Stops whatever the character is doing (dash, attack, spell, air hover)
+    public void Interrupt()
     {
         CancelDash();
         isCarryingMomentum = false;
         if (attack != null)
         {
             attack.Interrupt();
+        }
+        if (meter != null)
+        {
+            meter.StopCharging();
         }
         if (caster != null)
         {
@@ -314,6 +331,9 @@ public class PlayerController : MonoBehaviour
     //   on the ground, still        -> groundState
     // Attacks and spells play their own animations and cut into these. Each state must exist in the
     // character's Animator Controller. Used by the boss (BossAI); the player doesn't call it, so it's unaffected.
+    // While on, the code-driven animations above leave the animator alone (BossAI's shockwave and transformation)
+    public bool HoldBodyAnimation { get; set; }
+
     public void SetBodyAnimations(string groundState, string runState, string airState)
     {
         groundAnimationHash = string.IsNullOrEmpty(groundState) ? 0 : Animator.StringToHash(groundState);
@@ -327,7 +347,7 @@ public class PlayerController : MonoBehaviour
         {
             return; // not using code-driven animations (the player)
         }
-        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking || isDefeated)
+        if (anim == null || anim.runtimeAnimatorController == null || IsAttacking || isDefeated || HoldBodyAnimation)
         {
             return; // attacks and spells play their own animations
         }
@@ -523,6 +543,7 @@ public class PlayerController : MonoBehaviour
             rb.gravityScale = 0f; // hang in place for the throw and the warp
             Face(dashDirection);
             SetAnimBool("Dashing", true);
+            dashSound.Play();
             lastTapTime = -1f; // a third tap shouldn't count as another double tap
         }
 
@@ -714,12 +735,17 @@ public class PlayerController : MonoBehaviour
             }
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
             jumpsRemaining--;
+            if (jumpsRemaining == maxJumps - 1)
+            {
+                jumpSound.Play(); // the first jump (the double jump has its own sound below)
+            }
 
             // Only the jump after the first one has been used counts as a double jump
             if (jumpsRemaining < maxJumps - 1)
             {
                 isDoubleJumping = true;
                 startedDoubleJump = true;
+                doubleJumpSound.Play();
             }
         }
 
@@ -789,7 +815,12 @@ public class PlayerController : MonoBehaviour
             lastGroundedTime = Time.time;
         }
         bool justJumped = Time.time - lastJumpTime < jumpGroundIgnoreTime;
+        bool wasInAir = isInAir;
         isInAir = justJumped || (!isGrounded && Time.time - lastGroundedTime > airborneGraceTime);
+        if (wasInAir && !isInAir && isGrounded)
+        {
+            landSound.Play();
+        }
         if (!isInAir)
         {
             airSince = -1f;

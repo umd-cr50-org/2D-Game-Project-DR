@@ -14,6 +14,8 @@ public class Projectile : MonoBehaviour
     [SerializeField] private LayerMask hitLayers = ~0;
     [SerializeField] private bool rotateToDirection = true;
 
+    public SoundEffect ImpactSound { get; set; } // set by MagicCaster; plays when the projectile hits anything
+
     private GameObject owner;
     private Vector2 velocity;
     private float damage;
@@ -65,6 +67,10 @@ public class Projectile : MonoBehaviour
             {
                 continue; // never hits whoever cast it
             }
+            if (hit.collider.GetComponent<HealthPickup>() != null)
+            {
+                continue; // flies through health orbs
+            }
 
             IHittable target = hit.collider.GetComponentInParent<IHittable>();
             target?.OnHit(new AttackHitInfo
@@ -75,6 +81,7 @@ public class Projectile : MonoBehaviour
                 attacker = owner,
             });
             // Hittable or solid scenery: either way the projectile is spent
+            ImpactSound?.Play();
             transform.position = hit.centroid;
             Destroy(gameObject);
             return;

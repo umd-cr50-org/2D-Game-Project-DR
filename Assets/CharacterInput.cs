@@ -12,4 +12,6 @@ public abstract class CharacterInput : MonoBehaviour
     public abstract bool AttackPressed { get; } // true only on the frame attack is pressed
     public abstract int DashDirection { get; } // -1 / 1 on the frame a dash is requested directly, otherwise 0
     public virtual bool MagicPressed => false; // true only on the frame magic is pressed (used by MagicCaster)
+    public virtual bool ChargeHeld => false; // true while the charge button is held (SpecialMeter fills the gauge)
+    public virtual bool UltimatePressed => false; // true only on the frame the ultimate is pressed (UltimateAbility)
 }

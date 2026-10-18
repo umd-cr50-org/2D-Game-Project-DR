@@ -138,6 +138,25 @@
     border-color: rgb(220, 160, 255);
 }
 
+/* The boss's ultimate gauge, under its health bar; flashes when full */
+.boss-meter-bar {
+    height: 8px;
+    margin-top: 4px;
+    border-width: 1px;
+}
+
+.boss-meter-fill {
+    background-color: rgb(255, 140, 40);
+}
+
+.boss-meter-bar.full .boss-meter-fill {
+    background-color: rgb(255, 60, 40);
+}
+
+.special-bar.charging {
+    border-color: rgb(140, 200, 255);
+}
+
 /* Thin line on the bar where phase 2 starts (GameUI positions it) */
 .phase-marker {
     position: absolute;

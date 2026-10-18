@@ -28,10 +28,16 @@ public class Health : MonoBehaviour, IHittable
     [Tooltip("Animator state played when health reaches 0 (e.g. Player_Lose / Boss_Lose).")]
     [SerializeField] private string defeatAnimation = "";
 
+    [Header ("Sounds")]
+    [SerializeField] private SoundEffect hurtSound = new SoundEffect();
+    [SerializeField] private SoundEffect defeatSound = new SoundEffect();
+    [SerializeField] private SoundEffect healSound = new SoundEffect();
+
     public float Max => maxHealth;
     public float Current { get; private set; }
     public float Fraction => Current / maxHealth;
     public bool IsDead { get; private set; }
+    public bool Invulnerable { get; set; } // ignores all hits while on (during an ultimate)
 
     public event Action<Health> Changed; // damage taken (or healed)
     public event Action<Health> Died;
@@ -58,7 +64,8 @@ public class Health : MonoBehaviour, IHittable
 
     public void OnHit(AttackHitInfo hit)
     {
-        if (IsDead || Time.time < invincibleUntil || hit.damage <= 0f)
+        bool invincible = Time.time < invincibleUntil && !hit.ignoresInvincibility;
+        if (IsDead || Invulnerable || invincible || hit.damage <= 0f)
         {
             return;
         }
@@ -74,9 +81,11 @@ public class Health : MonoBehaviour, IHittable
             Die();
             return;
         }
+        hurtSound.Play();
+        // Some hits (the boss's shockwave) stun longer than usual; super armor (0) still ignores stun entirely
         if (hitStunTime > 0f)
         {
-            body.TakeHit(hit.knockback * knockbackMultiplier, hitStunTime);
+            body.TakeHit(hit.knockback * knockbackMultiplier, Mathf.Max(hitStunTime, hit.hitStun));
         }
     }
 
@@ -87,12 +96,14 @@ public class Health : MonoBehaviour, IHittable
             return;
         }
         Current = Mathf.Min(maxHealth, Current + amount);
+        healSound.Play();
         Changed?.Invoke(this);
     }
 
     private void Die()
     {
         IsDead = true;
+        defeatSound.Play();
         body.Defeat(defeatAnimation);
         Died?.Invoke(this);
     }

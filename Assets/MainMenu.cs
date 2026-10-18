@@ -10,6 +10,7 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private string gameTitle = "2D GAME";
     [Tooltip("Scene loaded by Start (it must be in File > Build Profiles' scene list).")]
     [SerializeField] private string gameScene = "SampleScene";
+    [SerializeField] private SoundEffect buttonClickSound = new SoundEffect();
 
     private VisualElement mainPanel, controlsPanel;
 
@@ -22,10 +23,10 @@ public class MainMenu : MonoBehaviour
         root.Q<Label>("game-title").text = gameTitle;
 
         Button start = root.Q<Button>("start-button");
-        start.clicked += () => SceneManager.LoadScene(gameScene);
-        root.Q<Button>("controls-button").clicked += () => ShowControls(true);
-        root.Q<Button>("back-button").clicked += () => ShowControls(false);
-        root.Q<Button>("quit-button").clicked += Quit;
+        OnClick(start, () => SceneManager.LoadScene(gameScene));
+        OnClick(root.Q<Button>("controls-button"), () => ShowControls(true));
+        OnClick(root.Q<Button>("back-button"), () => ShowControls(false));
+        OnClick(root.Q<Button>("quit-button"), Quit);
         start.Focus();
     }
 
@@ -35,6 +36,15 @@ public class MainMenu : MonoBehaviour
         {
             ShowControls(false);
         }
+    }
+
+    private void OnClick(Button button, System.Action action)
+    {
+        button.clicked += () =>
+        {
+            buttonClickSound.Play();
+            action();
+        };
     }
 
     private void ShowControls(bool show)

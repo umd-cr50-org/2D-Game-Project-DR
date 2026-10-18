@@ -13,16 +13,21 @@ using UnityEngine.Serialization;
 //   Pursue   - picks an action from where the player is, in this order:
 //                close range, level with the player   -> ground jab string (minHits..maxHits presses)
 //                close range, player above             -> jump (double jump if they're high) into the air string
+//                player directly below                 -> magic straight down, or (magic on cooldown) a shockwave
+//                                                         that blasts them away with huge knockback
 //                player running away, gap in magic range -> magic (if the MagicCaster is ready)
 //                gap in dash range                     -> dash at the player to close the distance
 //                farther                               -> walk at them; jump up ledges / when stuck
-//   Cooldown - after EVERY attack (strings and magic) the boss does nothing for actionCooldown seconds.
-//   Phase 2  - below phase2At health it waits less between attacks and moves faster.
+//   Cooldown - after EVERY attack (strings, magic, shockwave) the boss does nothing for actionCooldown seconds.
+//   Teleport - when its health first drops past each Teleport At Health mark (75%, 50%, 25%) it fades out
+//              and reappears at one of the Teleport Points, away from the player.
+//   Phase 2  - below phase2At health the boss fires stronger magic (more orbs, faster), casts whenever the
+//              player is in magic range, waits less between attacks and moves faster.
 [DefaultExecutionOrder(-100)]
 [RequireComponent(typeof(PlayerController), typeof(PlayerAttack), typeof(Rigidbody2D))]
 public class BossAI : CharacterInput
 {
-    private enum State { Dormant, Pursue, JumpAttack, Attacking, Casting, Cooldown }
+    private enum State { Dormant, Pursue, JumpAttack, Attacking, Casting, Shockwave, Ultimate, Teleport, Cooldown }
 
     [Header ("Movement")]
     [Tooltip("When the game starts, copy the player's gravity, jump, dash and slope settings onto the boss so it moves like the player.")]
@@ -37,6 +42,12 @@ public class BossAI : CharacterInput
     [SerializeField] private string runAnimation = "Boss_Running";
     [Tooltip("Played on the ground while standing still.")]
     [SerializeField] private string groundAnimation = "Boss_Idle";
+    [Tooltip("Attack animations: \"Boss_Attack\" means Boss_Attack, Boss_Attack2, Boss_Attack3, Boss_Attack4.")]
+    [SerializeField] private string attackAnimationPrefix = "Boss_Attack";
+    [Tooltip("Played while casting magic.")]
+    [SerializeField] private string magicAnimation = "Boss_Magic";
+    [Tooltip("Played for the shockwave (when the player is directly below).")]
+    [SerializeField] private string shockwaveAnimation = "Boss_Attack3";
 
     [Header ("Battle Start")]
     [Tooltip("The battle starts as soon as the gap between the boss and the player is this small (world units).")]
@@ -83,6 +94,23 @@ public class BossAI : CharacterInput
     [Tooltip("...for at least this long.")]
     [SerializeField] private float runningTime = 0.4f;
 
+    [Header ("Player Directly Below (world units, body to body)")]
+    [Tooltip("The player counts as directly below when their feet are lower than levelTolerance and the sideways gap is at most this.")]
+    [SerializeField] private float belowGap = 4f;
+    [Tooltip("Shockwave (used when magic isn't ready): it hits if the gap to the player is at most this when it goes off.")]
+    [SerializeField] private float shockwaveReach = 12f;
+    [Tooltip("Wind-up before the shockwave goes off.")]
+    [SerializeField] private float shockwaveWindup = 0.25f;
+    [Tooltip("Time after it goes off before the boss moves on (then the usual cooldown follows).")]
+    [SerializeField] private float shockwaveRecovery = 0.3f;
+    [SerializeField] private float shockwaveDamage = 3f;
+    [Tooltip("X pushes the player away from the boss, Y launches them up. The player's jump force is 40 for scale.")]
+    [SerializeField] private Vector2 shockwaveKnockback = new Vector2(55f, 35f);
+    [Tooltip("How long the player is helpless after the shockwave (so they really fly).")]
+    [SerializeField] private float shockwaveStun = 0.6f;
+    [Tooltip("Minimum time between shockwaves.")]
+    [SerializeField] private float shockwaveCooldown = 3f;
+
     [Header ("Phase 2 (needs a Health on the boss)")]
     [Tooltip("Phase 2 starts when the boss's health drops to this fraction (0.5 = half).")]
     [SerializeField, Range(0f, 1f)] private float phase2At = 0.5f;
@@ -90,6 +118,45 @@ public class BossAI : CharacterInput
     [SerializeField] private float phase2CooldownMultiplier = 0.5f;
     [Tooltip("In phase 2 Walk Speed is multiplied by this.")]
     [SerializeField] private float phase2SpeedMultiplier = 1.25f;
+
+
+    [Header ("Phase 2 Magic")]
+    [Tooltip("Orbs per cast in phase 2 (fanned out).")]
+    [SerializeField, Min(1)] private int phase2ProjectileCount = 3;
+    [SerializeField] private float phase2ProjectileSpeedMultiplier = 1.3f;
+    [SerializeField] private float phase2ProjectileDamageMultiplier = 1.25f;
+    [SerializeField] private Color phase2ProjectileColor = new Color(0.75f, 0.35f, 1f);
+    [Tooltip("Optional: a different projectile prefab for phase 2.")]
+    [SerializeField] private Projectile phase2ProjectilePrefab;
+    [Tooltip("In phase 2, cast whenever the player is in magic range, not only while they run away.")]
+    [SerializeField] private bool phase2MagicAnyTime = true;
+
+    [Header ("Teleport (needs Teleport Points)")]
+    [Tooltip("Places the boss can teleport to: empty objects in the scene, set on the ground where the boss should land.")]
+    [SerializeField] private Transform[] teleportPoints = new Transform[0];
+    [Tooltip("The boss teleports (once each) when its health first drops to each of these fractions (0.75 = 75%). " +
+             "Add or remove entries for more or fewer teleports.")]
+    [SerializeField] private float[] teleportAtHealth = { 0.75f, 0.5f, 0.25f };
+    [Tooltip("The boss won't land a point closer to the player than this (body to body), so it never appears on top of them.")]
+    [SerializeField] private float teleportMinGapToPlayer = 6f;
+    [Tooltip("Seconds to fade out, and again to fade back in. The boss can't be hurt while teleporting.")]
+    [SerializeField] private float teleportFadeTime = 0.35f;
+    [Tooltip("Optional animator states played while vanishing / reappearing.")]
+    [SerializeField] private string teleportOutAnimation = "";
+    [SerializeField] private string teleportInAnimation = "";
+    [SerializeField] private SoundEffect teleportOutSound = new SoundEffect();
+    [SerializeField] private SoundEffect teleportInSound = new SoundEffect();
+
+    [Header ("Ultimate (needs a Special Meter and an Ultimate Ability on the boss)")]
+    [Tooltip("When its gauge is full, the boss uses its ultimate once the gap to the player is at most this (keep it smaller than the Ultimate Ability radius so it reaches).")]
+    [SerializeField] private float ultimateUseGap = 12f;
+
+    [Header ("Sounds")]
+    [Tooltip("Plays when the battle starts (e.g. a roar).")]
+    [SerializeField] private SoundEffect battleStartSound = new SoundEffect();
+    [Tooltip("Plays when phase 2 starts.")]
+    [SerializeField] private SoundEffect phase2Sound = new SoundEffect();
+    [SerializeField] private SoundEffect shockwaveSound = new SoundEffect();
 
     [SerializeField] private bool logDecisions; // prints what the boss decides to the Console
 
@@ -121,8 +188,19 @@ public class BossAI : CharacterInput
     private bool doubleJumpUsed;
     private float stuckSince = -1f;
     private bool magicPressed;
+    private bool ultimatePressed;
+    private bool ultimateStarted;
+    private UltimateAbility ultimate;
     private bool castStarted;
     private float runningSince = -1f;
+    private float nextShockwaveTime;
+    private bool[] teleportUsed = new bool[0]; // which Teleport At Health thresholds have fired
+    private bool teleportPending; // a threshold was just crossed: teleport as soon as possible
+    private Vector2 teleportTarget;
+    private bool teleportArrived;
+    private SpriteRenderer sprite;
+    private bool shockwaveFired;
+    private Animator anim;
 
     private PlayerController body;
     private PlayerAttack attack;
@@ -136,6 +214,7 @@ public class BossAI : CharacterInput
     private Health health;
 
     public override bool MagicPressed => magicPressed;
+    public override bool UltimatePressed => ultimatePressed;
     private bool PlayerIsRunning => runningSince >= 0f && Time.time - runningSince >= runningTime;
 
     // Where the player is, measured body to body
@@ -144,8 +223,20 @@ public class BossAI : CharacterInput
     private float rise; // how much higher the player's feet are than the boss's (negative = lower)
     private float gap; // overall empty space between the bodies
 
+    void Awake()
+    {
+        // The boss always has magic, even if no Magic Caster was added to it in the scene
+        if (GetComponent<MagicCaster>() == null)
+        {
+            gameObject.AddComponent<MagicCaster>();
+        }
+    }
+
     void Start()
     {
+        anim = GetComponent<Animator>();
+        sprite = GetComponentInChildren<SpriteRenderer>();
+        teleportUsed = new bool[teleportAtHealth.Length];
         body = GetComponent<PlayerController>();
         attack = GetComponent<PlayerAttack>();
         caster = GetComponent<MagicCaster>();
@@ -163,7 +254,12 @@ public class BossAI : CharacterInput
         {
             health.Changed += OnHealthChanged;
         }
+        // The boss's own animations, whatever its Player Attack / Magic Caster were set to in the scene
         body.SetBodyAnimations(groundAnimation, runAnimation, airAnimation);
+        attack.SetAnimationPrefix(attackAnimationPrefix, isBase: true);
+        caster.SetCastState(magicAnimation, isBase: true);
+        caster.MeterCost = 0f; // the boss's magic is free; its gauge is only for the ultimate
+        ultimate = GetComponent<UltimateAbility>();
     }
 
     void Update()
@@ -174,6 +270,7 @@ public class BossAI : CharacterInput
         attackPressed = false;
         dashDirection = 0;
         magicPressed = false;
+        ultimatePressed = false;
         body.WalkSpeed = walkSpeed * (InPhase2 ? phase2SpeedMultiplier : 1f); // so Walk Speed can be tuned live in Play mode
 
         // Defeated or game paused: no actions
@@ -186,11 +283,22 @@ public class BossAI : CharacterInput
         {
             return;
         }
-        if (targetHealth != null && targetHealth.IsDead) // the player is down: the fight is over
+        if (targetHealth != null && targetHealth.IsDead && state != State.Teleport) // the player is down: the fight is over (a teleport finishes first)
         {
             return;
         }
         TrackPlayerRunning();
+
+        // Health dropped past a Teleport At Health mark: drop whatever it's doing and teleport away
+        if (teleportPending && CanTeleport())
+        {
+            teleportPending = false;
+            if (TryPickPoint(nearPlayer: false, out Vector2 point))
+            {
+                BeginTeleport(point, $"health {health.Fraction:P0}");
+                return;
+            }
+        }
 
         switch (state)
         {
@@ -198,6 +306,7 @@ public class BossAI : CharacterInput
                 if (gap <= battleStartGap)
                 {
                     Log("Battle start");
+                    battleStartSound.Play();
                     SetState(State.Pursue);
                     Pursue();
                 }
@@ -217,6 +326,18 @@ public class BossAI : CharacterInput
 
             case State.Casting:
                 Casting();
+                break;
+
+            case State.Ultimate:
+                UltimateState();
+                break;
+
+            case State.Shockwave:
+                Shockwave();
+                break;
+
+            case State.Teleport:
+                TeleportState();
                 break;
 
             case State.Cooldown:
@@ -277,6 +398,18 @@ public class BossAI : CharacterInput
             return;
         }
 
+        // Gauge full and the player close enough: ultimate before anything else
+        if (ultimate != null && ultimate.IsReady && gap <= ultimateUseGap)
+        {
+            body.Face(direction);
+            ultimatePressed = true;
+            ultimateStarted = false;
+            timer = Time.time + 0.3f; // if it hasn't started by then, the press was refused
+            SetState(State.Ultimate);
+            Log($"ULTIMATE (gap {gap:0.0})");
+            return;
+        }
+
         bool level = Mathf.Abs(rise) <= levelTolerance;
         bool grounded = body.IsGrounded;
 
@@ -305,17 +438,29 @@ public class BossAI : CharacterInput
             return;
         }
 
+        // Player right underneath (none of the moves above can reach them): magic straight down,
+        // or if that's on cooldown, a shockwave that blasts them out from under the boss
+        if (rise < -levelTolerance && gapX <= belowGap)
+        {
+            if (caster.IsReady)
+            {
+                BeginCast("magic down at the player below");
+                return;
+            }
+            if (Time.time >= nextShockwaveTime)
+            {
+                BeginShockwave();
+                return;
+            }
+        }
+
         // Player in magic range (and running away, unless that's switched off): magic instead of chasing
         bool inMagicRange = gap >= magicMinGap && gap <= magicMaxGap;
-        bool magicWanted = inMagicRange && (PlayerIsRunning || !magicOnlyWhenRunning);
-        if (magicWanted && caster != null && caster.IsReady && !body.IsFreeFalling)
+        bool anyTime = !magicOnlyWhenRunning || (InPhase2 && phase2MagicAnyTime);
+        bool magicWanted = inMagicRange && (PlayerIsRunning || anyTime);
+        if (magicWanted && caster.IsReady)
         {
-            body.Face(direction);
-            magicPressed = true;
-            castStarted = false;
-            timer = Time.time + 0.3f; // if no cast has started by then, the press was refused
-            SetState(State.Casting);
-            Log($"magic (gap {gap:0.0})");
+            BeginCast($"magic (gap {gap:0.0})");
             return;
         }
 
@@ -455,14 +600,281 @@ public class BossAI : CharacterInput
         }
     }
 
+    // ---------- Teleport ----------
+
+    private bool CanTeleport()
+    {
+        // Not in the middle of a teleport or the ultimate (it waits for those to finish)
+        return teleportPoints.Length > 0 && state != State.Teleport && state != State.Ultimate
+            && body.CanAct && (ultimate == null || !ultimate.IsActive);
+    }
+
+    // Picks a teleport point: the one nearest the player (but not on top of them), or a random one away
+    // from where the boss is now. Returns the point's position.
+    private bool TryPickPoint(bool nearPlayer, out Vector2 point)
+    {
+        point = Vector2.zero;
+        Bounds me = bodyCollider != null ? bodyCollider.bounds : new Bounds(transform.position, Vector3.zero);
+        Bounds them = targetCollider != null ? targetCollider.bounds : new Bounds(target.transform.position, Vector3.zero);
+        float bestScore = float.MaxValue;
+        bool found = false;
+
+        foreach (Transform p in teleportPoints)
+        {
+            if (p == null)
+            {
+                continue;
+            }
+            Vector2 pos = p.position;
+            // Gap between the player's body and where the boss's body would be standing at this point
+            float gapToPlayer = Mathf.Max(0f, Mathf.Abs(pos.x - them.center.x) - (me.extents.x + them.extents.x));
+            if (gapToPlayer < teleportMinGapToPlayer && Mathf.Abs(pos.y - them.min.y) < me.size.y)
+            {
+                continue; // would land on (or right beside) the player
+            }
+            if (Vector2.Distance(pos, new Vector2(me.center.x, me.min.y)) < me.size.x)
+            {
+                continue; // that's where the boss already is
+            }
+
+            float score;
+            if (nearPlayer)
+            {
+                score = Vector2.Distance(pos, them.center);
+            }
+            else
+            {
+                score = Random.value; // random pick among the valid points
+            }
+            if (score < bestScore)
+            {
+                bestScore = score;
+                point = pos;
+                found = true;
+            }
+        }
+        return found;
+    }
+
+    private void BeginTeleport(Vector2 point, string reason)
+    {
+        teleportTarget = point;
+        teleportArrived = false;
+        timer = Time.time + teleportFadeTime;
+        body.Interrupt();
+        if (health != null)
+        {
+            health.Invulnerable = true;
+        }
+        if (!string.IsNullOrEmpty(teleportOutAnimation))
+        {
+            body.HoldBodyAnimation = true;
+            PlayAnimation(teleportOutAnimation, null);
+        }
+        teleportOutSound.Play();
+        SetState(State.Teleport);
+        Log("teleport: " + reason);
+    }
+
+    private void TeleportState()
+    {
+        rb.linearVelocity = Vector2.zero;
+        float t = Mathf.Clamp01((timer - Time.time) / Mathf.Max(teleportFadeTime, 0.01f)); // 1 -> 0 over each half
+
+        if (!teleportArrived)
+        {
+            SetAlpha(t); // fading out
+            if (Time.time < timer)
+            {
+                return;
+            }
+            // Move so the boss's feet (bottom of its collider) land on the point
+            Bounds b = bodyCollider != null ? bodyCollider.bounds : new Bounds(transform.position, Vector3.zero);
+            Vector2 feetOffset = (Vector2)transform.position - new Vector2(b.center.x, b.min.y);
+            Vector2 destination = teleportTarget + feetOffset;
+            rb.position = destination;
+            transform.position = destination;
+            body.Face(direction);
+            teleportArrived = true;
+            timer = Time.time + teleportFadeTime;
+            body.HoldBodyAnimation = false;
+            if (!string.IsNullOrEmpty(teleportInAnimation))
+            {
+                body.HoldBodyAnimation = true;
+                PlayAnimation(teleportInAnimation, null);
+            }
+            teleportInSound.Play();
+            return;
+        }
+
+        SetAlpha(1f - t); // fading in
+        if (Time.time >= timer)
+        {
+            SetAlpha(1f);
+            if (health != null)
+            {
+                health.Invulnerable = false;
+            }
+            if (body.HoldBodyAnimation)
+            {
+                ReturnToBodyAnimation();
+            }
+            SetState(State.Pursue);
+        }
+    }
+
+    private void SetAlpha(float alpha)
+    {
+        if (sprite == null)
+        {
+            return;
+        }
+        Color c = body.BaseColor;
+        c.a *= alpha;
+        sprite.color = c;
+    }
+
+    private void UltimateState()
+    {
+        if (ultimate.IsActive)
+        {
+            ultimateStarted = true;
+        }
+        else if (!ultimateStarted && Time.time >= timer)
+        {
+            SetState(State.Pursue); // it didn't start (busy): rethink
+            return;
+        }
+        if (ultimateStarted && !ultimate.IsActive)
+        {
+            timer = Time.time + ActionCooldown;
+            SetState(State.Cooldown);
+        }
+    }
+
+    private void BeginCast(string reason)
+    {
+        body.Face(direction);
+        magicPressed = true;
+        castStarted = false;
+        timer = Time.time + 0.3f; // if no cast has started by then, the press was refused
+        SetState(State.Casting);
+        Log(reason);
+    }
+
+    // ---------- Shockwave (player directly below) ----------
+
+    private void BeginShockwave()
+    {
+        shockwaveFired = false;
+        timer = Time.time + shockwaveWindup;
+        nextShockwaveTime = Time.time + shockwaveCooldown;
+        body.HoldBodyAnimation = true;
+        PlayAnimation(shockwaveAnimation, null);
+        SetState(State.Shockwave);
+        Log("shockwave");
+    }
+
+    private void Shockwave()
+    {
+        if (!shockwaveFired)
+        {
+            if (Time.time < timer)
+            {
+                return;
+            }
+            shockwaveFired = true;
+            shockwaveSound.Play();
+            timer = Time.time + shockwaveRecovery;
+            if (gap <= shockwaveReach)
+            {
+                // Away from the boss sideways (whichever side the player's center is on) and up
+                float dx = target.transform.position.x - transform.position.x;
+                float side = Mathf.Abs(dx) > 0.01f ? Mathf.Sign(dx) : direction;
+                IHittable hittable = target.GetComponent<IHittable>();
+                hittable?.OnHit(new AttackHitInfo
+                {
+                    attackNumber = 0,
+                    damage = shockwaveDamage,
+                    knockback = new Vector2(side * shockwaveKnockback.x, shockwaveKnockback.y),
+                    attacker = gameObject,
+                    hitStun = shockwaveStun,
+                });
+            }
+            return;
+        }
+        if (Time.time >= timer)
+        {
+            ReturnToBodyAnimation();
+            timer = Time.time + ActionCooldown;
+            SetState(State.Cooldown);
+        }
+    }
+
+    // ---------- Phase 2 ----------
+
     private void OnHealthChanged(Health h)
     {
-        if (!InPhase2 && !h.IsDead && h.Fraction <= phase2At)
+        // Health teleports: each threshold fires once (a big hit past several only teleports once)
+        for (int i = 0; i < Mathf.Min(teleportAtHealth.Length, teleportUsed.Length); i++)
         {
-            InPhase2 = true;
-            Log("Phase 2");
-            EnteredPhase2?.Invoke();
+            if (!teleportUsed[i] && !h.IsDead && h.Fraction <= teleportAtHealth[i])
+            {
+                teleportUsed[i] = true;
+                teleportPending = true;
+            }
         }
+
+        if (InPhase2 || h.IsDead || h.Fraction > phase2At)
+        {
+            return;
+        }
+        InPhase2 = true;
+        Log("Phase 2");
+        EnteredPhase2?.Invoke();
+        phase2Sound.Play();
+
+        // Stronger magic
+        caster.Count = phase2ProjectileCount;
+        caster.Speed *= phase2ProjectileSpeedMultiplier;
+        caster.Damage *= phase2ProjectileDamageMultiplier;
+        caster.OrbColor = phase2ProjectileColor;
+        if (phase2ProjectilePrefab != null)
+        {
+            caster.ProjectilePrefab = phase2ProjectilePrefab;
+        }
+    }
+
+    // ---------- Animation helpers ----------
+
+    // Plays a state if the animator has it (otherwise the fallback, if that exists)
+    private void PlayAnimation(string stateName, string fallback)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null)
+        {
+            return;
+        }
+        string chosen = Pick(stateName, fallback);
+        if (!string.IsNullOrEmpty(chosen) && anim.HasState(0, Animator.StringToHash(chosen)))
+        {
+            anim.Play(chosen, 0, 0f);
+            anim.Update(0f);
+        }
+    }
+
+    // The first name if the animator has that state, otherwise the second
+    private string Pick(string preferred, string fallback)
+    {
+        bool exists = anim != null && anim.runtimeAnimatorController != null && !string.IsNullOrEmpty(preferred)
+            && anim.HasState(0, Animator.StringToHash(preferred));
+        return exists ? preferred : fallback;
+    }
+
+    // After a one-off animation (transformation, shockwave), back to standing; PlayerController takes it from there
+    private void ReturnToBodyAnimation()
+    {
+        body.HoldBodyAnimation = false;
+        PlayAnimation(groundAnimation, null);
     }
 
     private void SetState(State newState)
@@ -506,5 +918,16 @@ public class BossAI : CharacterInput
         float top = b.max.y + doubleJumpRise + levelTolerance;
         Vector3 airCenter = new Vector3(b.center.x, (feet.y + levelTolerance + top) * 0.5f, 0f);
         Gizmos.DrawWireCube(airCenter, new Vector3(b.size.x + airAttackGap * 2f, top - (feet.y + levelTolerance), 0f));
+
+        // Teleport points (purple), and a line to each
+        Gizmos.color = new Color(0.7f, 0.3f, 1f);
+        foreach (Transform p in teleportPoints)
+        {
+            if (p != null)
+            {
+                Gizmos.DrawWireSphere(p.position, 1.5f);
+                Gizmos.DrawLine(feet, p.position);
+            }
+        }
     }
 }

@@ -38,6 +38,11 @@ public class PlayerAttack : MonoBehaviour
 
         [Tooltip("Where this attack hits. Select the Player and set Preview Attack to drag it around in the Scene view.")]
         public Hitbox hitbox = new Hitbox();
+
+        [Tooltip("Plays when this attack starts (the swing).")]
+        public SoundEffect swingSound = new SoundEffect();
+        [Tooltip("Plays when this attack lands on something.")]
+        public SoundEffect hitSound = new SoundEffect();
     }
 
     [System.Serializable]
@@ -91,10 +96,17 @@ public class PlayerAttack : MonoBehaviour
 
     private static readonly string[] attackBools = { "Attack1", "Attack2", "Attack3", "Attack4" };
 
+    private string originalPrefix; // the prefix before any SetAnimationPrefix (fallback for missing animations)
+
     // The animator state (and clip) for attack 1-4, named after the clips
     private string AttackStateName(int attackNumber)
     {
-        return attackNumber == 1 ? animationPrefix : animationPrefix + attackNumber;
+        return AttackStateName(animationPrefix, attackNumber);
+    }
+
+    private static string AttackStateName(string prefix, int attackNumber)
+    {
+        return attackNumber == 1 ? prefix : prefix + attackNumber;
     }
 
     // Whether an animator state (by name hash) is one of this character's attack animations
@@ -102,12 +114,41 @@ public class PlayerAttack : MonoBehaviour
     {
         for (int n = 1; n <= attackBools.Length; n++)
         {
-            if (Animator.StringToHash(AttackStateName(n)) == stateHash)
+            if (Animator.StringToHash(AttackStateName(n)) == stateHash
+                || (originalPrefix != null && Animator.StringToHash(AttackStateName(originalPrefix, n)) == stateHash))
             {
                 return true;
             }
         }
         return false;
+    }
+
+    // Switches to another set of attack animations (the boss's phase 2 uses "Boss2_Attack").
+    // isBase = this is the character's normal set (nothing to fall back to).
+    // Attacks whose new animation doesn't exist keep using the original one.
+    public void SetAnimationPrefix(string prefix, bool isBase = false)
+    {
+        if (string.IsNullOrEmpty(prefix))
+        {
+            return;
+        }
+        if (isBase)
+        {
+            originalPrefix = null;
+        }
+        else if (originalPrefix == null)
+        {
+            originalPrefix = animationPrefix;
+        }
+        animationPrefix = prefix;
+        for (int i = 0; i < MaxHits; i++)
+        {
+            AnimationClip clip = FindClip(AttackStateName(i + 1));
+            if (clip != null)
+            {
+                attacks[i].clip = clip; // so Match Clip Length times the new animation
+            }
+        }
     }
 
     private Animator anim;
@@ -257,12 +298,17 @@ public class PlayerAttack : MonoBehaviour
         cancelTime = hitLength * timing.cancelPoint;
 
         SetAttackBool(step);
+        timing.swingSound.Play();
         if (anim != null)
         {
             anim.speed = timing.playbackSpeed;
             // Jump straight into the hit's state from wherever the animator is (dash, jump, walk...),
             // since the animator only has transitions into the attacks from idle
             int stateHash = Animator.StringToHash(AttackStateName(step));
+            if (!anim.HasState(0, stateHash) && originalPrefix != null)
+            {
+                stateHash = Animator.StringToHash(AttackStateName(originalPrefix, step)); // no new version of this one yet
+            }
             if (anim.HasState(0, stateHash))
             {
                 anim.Play(stateHash, 0, 0f);
@@ -349,6 +395,10 @@ public class PlayerAttack : MonoBehaviour
             {
                 Debug.Log($"Attack{currentAttack} touched {target.name}{(hittable == null ? " (not hittable)" : "")}");
             }
+            if (hittable != null)
+            {
+                attacks[currentAttack - 1].hitSound.Play();
+            }
             hittable?.OnHit(new AttackHitInfo
             {
                 attackNumber = currentAttack,
@@ -417,6 +467,10 @@ public class PlayerAttack : MonoBehaviour
 
     private AnimationClip FindClip(string clipName)
     {
+        if (anim == null)
+        {
+            anim = GetComponent<Animator>(); // may be called before Start (by another script's Start)
+        }
         if (anim == null || anim.runtimeAnimatorController == null)
         {
             return null;

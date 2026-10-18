@@ -13,7 +13,7 @@
 
         <ui:VisualElement name="controls-panel" class="menu-box hidden">
             <ui:Label text="CONTROLS" class="menu-title" />
-            <ui:Label class="controls-list" text="Move: Arrow keys / A, D&#10;Jump / Double jump: Space&#10;Dash: double tap left or right&#10;Attack (combo): Z&#10;Magic: X&#10;Pause: Esc" />
+            <ui:Label class="controls-list" text="Move: Arrow keys / A, D&#10;Jump / Double jump: Space&#10;Dash: double tap left or right&#10;Attack (combo): Z&#10;Magic (uses gauge): X&#10;Charge gauge: hold C&#10;Ultimate (full gauge): V&#10;Pause: Esc" />
             <ui:Button name="back-button" text="Back" class="menu-button" />
         </ui:VisualElement>
 

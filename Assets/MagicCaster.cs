@@ -20,6 +20,9 @@ public class MagicCaster : MonoBehaviour
     [SerializeField] private float cooldown = 1.5f;
     [Tooltip("Fire when an Animation Event calls FireMagic instead of after Cast Time.")]
     [SerializeField] private bool fireFromAnimationEvent;
+    [Tooltip("Special meter used per cast. Only matters for characters with a Special Meter (the player): " +
+             "they can't cast without this much. The boss has no meter, so it casts freely.")]
+    [SerializeField] private float meterCost = 25f;
 
     [Header ("Projectile")]
     [Tooltip("Optional. A prefab with a Projectile script. Leave empty for a simple glowing orb.")]
@@ -42,14 +45,57 @@ public class MagicCaster : MonoBehaviour
     [Header ("Animation")]
     [Tooltip("Animator state to play when casting (e.g. Boss_Magic). Leave empty for none.")]
     [SerializeField] private string castStateName = "";
+    [Tooltip("Played when the spell is over and the character is on the ground, so the cast pose doesn't stick (e.g. Player_Idle). Skipped if the animator doesn't have it.")]
+    [SerializeField] private string castEndAnimation = "Player_Idle";
+    [Tooltip("Same, when the spell ends in the air (e.g. Player_Fall).")]
+    [SerializeField] private string castEndAirAnimation = "Player_Fall";
+
+    [Header ("Sounds")]
+    [Tooltip("Plays when the cast starts (wind-up).")]
+    [SerializeField] private SoundEffect castSound = new SoundEffect();
+    [Tooltip("Plays when the spell comes out.")]
+    [SerializeField] private SoundEffect fireSound = new SoundEffect();
+    [Tooltip("Plays when a projectile hits something.")]
+    [SerializeField] private SoundEffect impactSound = new SoundEffect();
 
     public bool IsCasting { get; private set; }
-    public bool IsCastState(int stateHash) => !string.IsNullOrEmpty(castStateName) && Animator.StringToHash(castStateName) == stateHash;
+    public bool IsCastState(int stateHash) =>
+        (!string.IsNullOrEmpty(castStateName) && Animator.StringToHash(castStateName) == stateHash)
+        || (!string.IsNullOrEmpty(originalCastState) && Animator.StringToHash(originalCastState) == stateHash);
+    private string originalCastState; // the cast animation before SetCastState (used when the new one doesn't exist)
+
+    // Projectile settings other scripts can change during play (the boss's phase 2 upgrades its magic)
+    public float MeterCost { get => meterCost; set => meterCost = value; }
+    public int Count { get => count; set => count = Mathf.Max(1, value); }
+    public float Speed { get => speed; set => speed = value; }
+    public float Damage { get => damage; set => damage = value; }
+    public Color OrbColor { get => orbColor; set => orbColor = value; }
+    public Projectile ProjectilePrefab { get => projectilePrefab; set => projectilePrefab = value; }
+
+    // Switches the cast animation (e.g. Boss2_Magic in phase 2); falls back to the original if it doesn't exist.
+    // isBase = this is the character's normal cast animation (nothing to fall back to).
+    public void SetCastState(string stateName, bool isBase = false)
+    {
+        if (string.IsNullOrEmpty(stateName))
+        {
+            return;
+        }
+        if (isBase)
+        {
+            originalCastState = null;
+        }
+        else if (originalCastState == null)
+        {
+            originalCastState = castStateName;
+        }
+        castStateName = stateName;
+    }
     public bool IsReady => !IsCasting && Time.time >= nextCastTime;
     public Transform AimTarget { get; set; } // aim at this instead of straight ahead (the boss sets the player)
 
     private PlayerController body;
     private PlayerAttack attack;
+    private SpecialMeter meter;
     private Animator anim;
     private float fireTime;
     private float endTime;
@@ -61,6 +107,7 @@ public class MagicCaster : MonoBehaviour
     {
         body = GetComponent<PlayerController>();
         attack = GetComponent<PlayerAttack>();
+        meter = GetComponent<SpecialMeter>();
         anim = GetComponent<Animator>();
     }
 
@@ -88,12 +135,14 @@ public class MagicCaster : MonoBehaviour
             }
             IsCasting = false;
             body.SetAnimBool("Casting", false);
+            PlayEndAnimation();
         }
     }
 
     private bool CanStartCast()
     {
-        return IsReady && body.CanAct && !body.IsDashing && !body.IsFreeFalling && (attack == null || !attack.IsAttacking);
+        bool enoughMeter = meter == null || meter.Current >= meterCost;
+        return enoughMeter && IsReady && body.CanAct && !body.IsDashing && !body.IsFreeFalling && (attack == null || !attack.IsAttacking);
     }
 
     private void StartCast()
@@ -103,15 +152,24 @@ public class MagicCaster : MonoBehaviour
         fireTime = Time.time + castTime;
         endTime = fireTime + recoveryTime;
         nextCastTime = Time.time + cooldown;
+        if (meter != null)
+        {
+            meter.Add(-meterCost); // paid when the cast starts
+        }
 
         if (AimTarget != null)
         {
             body.Face(AimTarget.position.x - transform.position.x);
         }
         body.SetAnimBool("Casting", true);
+        castSound.Play();
         if (anim != null && !string.IsNullOrEmpty(castStateName))
         {
             int stateHash = Animator.StringToHash(castStateName);
+            if (!anim.HasState(0, stateHash) && !string.IsNullOrEmpty(originalCastState))
+            {
+                stateHash = Animator.StringToHash(originalCastState);
+            }
             if (anim.HasState(0, stateHash))
             {
                 anim.Play(stateHash, 0, 0f);
@@ -130,6 +188,26 @@ public class MagicCaster : MonoBehaviour
         body.SetAnimBool("Casting", false);
     }
 
+    // Leaves the cast pose: the animator may have no way out of it by itself (the player's doesn't)
+    private void PlayEndAnimation()
+    {
+        if (anim == null || anim.runtimeAnimatorController == null || string.IsNullOrEmpty(castStateName))
+        {
+            return; // no cast animation was played
+        }
+        string stateName = body.IsGrounded ? castEndAnimation : castEndAirAnimation;
+        if (string.IsNullOrEmpty(stateName))
+        {
+            return;
+        }
+        int hash = Animator.StringToHash(stateName);
+        if (anim.HasState(0, hash))
+        {
+            anim.Play(hash, 0, 0f);
+            anim.Update(0f);
+        }
+    }
+
     // Fires the spell. Called automatically after castTime, or by an Animation Event on the cast animation.
     public void FireMagic()
     {
@@ -138,6 +216,7 @@ public class MagicCaster : MonoBehaviour
             return;
         }
         fired = true;
+        fireSound.Play();
 
         float facing = body.FacingSign();
         Vector2 scale = new Vector2(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.y));
@@ -160,6 +239,7 @@ public class MagicCaster : MonoBehaviour
                 ? Instantiate(projectilePrefab, origin, Quaternion.identity)
                 : CreateDefaultOrb(origin);
             projectile.Launch(gameObject, direction, speed, damage, knockback, lifetime, size * 0.5f);
+            projectile.ImpactSound = impactSound;
         }
     }
 
@@ -176,8 +256,8 @@ public class MagicCaster : MonoBehaviour
         return orb.AddComponent<Projectile>();
     }
 
-    // A soft white circle 1 world unit across, generated once
-    private static Sprite GetOrbSprite()
+    // A soft white circle 1 world unit across, generated once (also used by HealthPickup)
+    public static Sprite GetOrbSprite()
     {
         if (orbSprite != null)
         {

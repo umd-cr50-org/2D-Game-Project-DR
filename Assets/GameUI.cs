@@ -30,17 +30,25 @@ public class GameUI : MonoBehaviour
     [Tooltip("Seconds between a defeat and the end screen appearing (so the defeat animation can play).")]
     [SerializeField] private float endScreenDelay = 1.5f;
 
+    [Header ("Sounds")]
+    [SerializeField] private SoundEffect buttonClickSound = new SoundEffect();
+    [SerializeField] private SoundEffect pauseSound = new SoundEffect();
+    [Tooltip("Plays when the boss bar appears (the battle starts).")]
+    [SerializeField] private SoundEffect bossBarSound = new SoundEffect();
+
     private Health playerHealth;
     private SpecialMeter special;
     private BossAI boss;
     private Health bossHealth;
+    private SpecialMeter bossMeter;
+    private bool bossBarShown;
 
     private VisualElement playerHealthFill, playerHealthTrail, specialBar, specialFill;
     private Label playerHealthText, specialText;
-    private VisualElement bossPanel, bossHealthFill, bossHealthTrail, phaseMarker;
-    private VisualElement pauseMenu, endScreen;
+    private VisualElement bossPanel, bossHealthFill, bossHealthTrail, phaseMarker, bossMeterBar, bossMeterFill;
+    private VisualElement pauseMenu, pausePanel, controlsPanel, endScreen;
     private Label endTitle, endSubtitle;
-    private Button resumeButton, retryButton;
+    private Button resumeButton, retryButton, controlsBackButton;
 
     private float playerTrail = 1f, playerTrailWait;
     private float bossTrail = 1f, bossTrailWait;
@@ -62,17 +70,24 @@ public class GameUI : MonoBehaviour
         bossHealthFill = root.Q("boss-health-fill");
         bossHealthTrail = root.Q("boss-health-trail");
         phaseMarker = root.Q("boss-phase-marker");
+        bossMeterBar = root.Q("boss-meter-bar");
+        bossMeterFill = root.Q("boss-meter-fill");
         pauseMenu = root.Q("pause-menu");
+        pausePanel = root.Q("pause-panel");
+        controlsPanel = root.Q("controls-panel");
         endScreen = root.Q("end-screen");
         endTitle = root.Q<Label>("end-title");
         endSubtitle = root.Q<Label>("end-subtitle");
 
         resumeButton = root.Q<Button>("resume-button");
         retryButton = root.Q<Button>("retry-button");
-        resumeButton.clicked += Resume;
-        root.Q<Button>("restart-button").clicked += Restart;
-        retryButton.clicked += Restart;
-        root.Q<Button>("quit-button").clicked += Quit;
+        OnClick(resumeButton, Resume);
+        controlsBackButton = root.Q<Button>("controls-back-button");
+        OnClick(root.Q<Button>("controls-button"), () => ShowControls(true));
+        OnClick(controlsBackButton, () => ShowControls(false));
+        OnClick(root.Q<Button>("restart-button"), Restart);
+        OnClick(retryButton, Restart);
+        OnClick(root.Q<Button>("quit-button"), Quit);
         SetUpMainMenuButton(root.Q<Button>("pause-menu-button"));
         SetUpMainMenuButton(root.Q<Button>("end-menu-button"));
 
@@ -95,6 +110,8 @@ public class GameUI : MonoBehaviour
         // The boss
         boss = FindAnyObjectByType<BossAI>();
         bossHealth = boss != null ? boss.GetComponent<Health>() : null;
+        bossMeter = boss != null ? boss.GetComponent<SpecialMeter>() : null;
+        bossMeterBar.style.display = bossMeter != null ? DisplayStyle.Flex : DisplayStyle.None;
         root.Q<Label>("boss-name").text = bossDisplayName;
         if (bossHealth != null)
         {
@@ -113,7 +130,11 @@ public class GameUI : MonoBehaviour
     {
         if (Input.GetKeyDown(pauseKey) && !gameOver)
         {
-            if (paused)
+            if (paused && !controlsPanel.ClassListContains("hidden"))
+            {
+                ShowControls(false); // Esc on the controls screen goes back to the pause menu
+            }
+            else if (paused)
             {
                 Resume();
             }
@@ -148,7 +169,10 @@ public class GameUI : MonoBehaviour
         {
             SetWidth(specialFill, special.Fraction);
             specialBar.EnableInClassList("full", special.IsFull);
-            specialText.text = special.IsFull ? "SPECIAL READY" : "SPECIAL";
+            specialBar.EnableInClassList("charging", special.IsCharging);
+            specialText.text = special.IsFull ? "ULTIMATE READY (V)"
+                : special.IsCharging ? "CHARGING..."
+                : $"MAGIC {Mathf.FloorToInt(special.Current)} / {Mathf.FloorToInt(special.Max)}";
         }
     }
 
@@ -160,6 +184,11 @@ public class GameUI : MonoBehaviour
         }
         // Fades in when the battle starts, fades out once the boss is beaten
         bool show = boss.BattleStarted && !bossHealth.IsDead;
+        if (show && !bossBarShown)
+        {
+            bossBarShown = true;
+            bossBarSound.Play();
+        }
         bossPanel.EnableInClassList("faded", !show);
         bossPanel.EnableInClassList("phase2", boss.InPhase2);
 
@@ -167,6 +196,11 @@ public class GameUI : MonoBehaviour
         UpdateTrail(fraction, ref bossTrail, ref bossTrailWait);
         SetWidth(bossHealthFill, fraction);
         SetWidth(bossHealthTrail, bossTrail);
+        if (bossMeter != null)
+        {
+            SetWidth(bossMeterFill, bossMeter.Fraction);
+            bossMeterBar.EnableInClassList("full", bossMeter.IsFull);
+        }
     }
 
     // The trail jumps up on heals, and after a short wait slides down to meet the bar after damage
@@ -197,6 +231,7 @@ public class GameUI : MonoBehaviour
         paused = true;
         Time.timeScale = 0f;
         pauseMenu.RemoveFromClassList("hidden");
+        pauseSound.Play();
         resumeButton.Focus();
     }
 
@@ -205,6 +240,15 @@ public class GameUI : MonoBehaviour
         paused = false;
         Time.timeScale = 1f;
         pauseMenu.AddToClassList("hidden");
+        ShowControls(false);
+    }
+
+    // The controls list replaces the pause buttons until Back (or Esc)
+    private void ShowControls(bool show)
+    {
+        controlsPanel.EnableInClassList("hidden", !show);
+        pausePanel.EnableInClassList("hidden", show);
+        (show ? controlsBackButton : resumeButton).Focus();
     }
 
     // ---------- End screen ----------
@@ -241,12 +285,22 @@ public class GameUI : MonoBehaviour
     {
         if (Application.CanStreamedLevelBeLoaded(mainMenuScene))
         {
-            button.clicked += () => LoadScene(mainMenuScene);
+            OnClick(button, () => LoadScene(mainMenuScene));
         }
         else
         {
             button.style.display = DisplayStyle.None; // no main menu scene in the build yet
         }
+    }
+
+    // Every button clicks before doing its job
+    private void OnClick(Button button, System.Action action)
+    {
+        button.clicked += () =>
+        {
+            buttonClickSound.Play();
+            action();
+        };
     }
 
     private void Restart()

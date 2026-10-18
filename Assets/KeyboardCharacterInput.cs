@@ -7,6 +7,10 @@ public class KeyboardCharacterInput : CharacterInput
 {
     [SerializeField] private KeyCode attackKey = KeyCode.Z;
     [SerializeField] private KeyCode magicKey = KeyCode.X;
+    [Tooltip("Hold to charge the magic gauge (standing on the ground).")]
+    [SerializeField] private KeyCode chargeKey = KeyCode.C;
+    [Tooltip("Uses the ultimate when the magic gauge is full.")]
+    [SerializeField] private KeyCode ultimateKey = KeyCode.V;
 
     // While the game is paused (time stopped) every button reads as not pressed
     private static bool Paused => Time.timeScale == 0f;
@@ -17,4 +21,6 @@ public class KeyboardCharacterInput : CharacterInput
     public override bool AttackPressed => !Paused && Input.GetKeyDown(attackKey);
     public override int DashDirection => 0;
     public override bool MagicPressed => !Paused && Input.GetKeyDown(magicKey);
+    public override bool ChargeHeld => !Paused && Input.GetKey(chargeKey);
+    public override bool UltimatePressed => !Paused && Input.GetKeyDown(ultimateKey);
 }
