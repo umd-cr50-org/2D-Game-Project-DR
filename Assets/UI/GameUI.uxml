@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- In-game UI: HUD (player health + special, boss bar), pause menu, end screen.
+     GameUI.cs finds the elements by name, so keep the names if you restyle it in UI Builder. -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="GameUI.uss" />
+    <ui:VisualElement name="root" class="screen" picking-mode="Ignore">
+
+        <ui:VisualElement name="hud" class="screen" picking-mode="Ignore">
+            <ui:VisualElement name="player-panel" class="player-panel" picking-mode="Ignore">
+                <ui:Label text="PLAYER" class="panel-title" />
+                <ui:VisualElement class="bar health-bar" picking-mode="Ignore">
+                    <ui:VisualElement name="player-health-trail" class="bar-trail" picking-mode="Ignore" />
+                    <ui:VisualElement name="player-health-fill" class="bar-fill health-fill" picking-mode="Ignore" />
+                    <ui:Label name="player-health-text" text="30 / 30" class="bar-text" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="player-special-bar" class="bar special-bar" picking-mode="Ignore">
+                    <ui:VisualElement name="player-special-fill" class="bar-fill special-fill" picking-mode="Ignore" />
+                    <ui:Label name="player-special-text" text="SPECIAL" class="bar-text" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="boss-panel" class="boss-panel faded" picking-mode="Ignore">
+                <ui:Label name="boss-name" text="BOSS" class="boss-name" />
+                <ui:VisualElement class="bar boss-bar" picking-mode="Ignore">
+                    <ui:VisualElement name="boss-health-trail" class="bar-trail" picking-mode="Ignore" />
+                    <ui:VisualElement name="boss-health-fill" class="bar-fill boss-fill" picking-mode="Ignore" />
+                    <ui:VisualElement name="boss-phase-marker" class="phase-marker" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="boss-meter-bar" class="bar boss-meter-bar" picking-mode="Ignore">
+                    <ui:VisualElement name="boss-meter-fill" class="bar-fill boss-meter-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="boss-phase" text="PHASE 2" class="boss-phase" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="boss-indicator" class="boss-indicator hidden" picking-mode="Ignore">
+            <ui:VisualElement name="boss-indicator-arrow" class="boss-indicator-arrow" picking-mode="Ignore" />
+            <ui:Label name="boss-indicator-label" text="BOSS" class="boss-indicator-label" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="pause-menu" class="screen overlay hidden">
+            <ui:VisualElement name="pause-panel" class="menu-box">
+                <ui:Label text="PAUSED" class="menu-title" />
+                <ui:Button name="resume-button" text="Resume" class="menu-button" />
+                <ui:Button name="controls-button" text="Controls" class="menu-button" />
+                <ui:Button name="restart-button" text="Restart" class="menu-button" />
+                <ui:Button name="pause-menu-button" text="Main Menu" class="menu-button" />
+                <ui:Button name="quit-button" text="Quit" class="menu-button" />
+            </ui:VisualElement>
+            <ui:VisualElement name="controls-panel" class="menu-box hidden">
+                <ui:Label text="CONTROLS" class="menu-title" />
+                <ui:Label class="controls-list" text="Move: Arrow keys / A, D&#10;Jump / Double jump: Space&#10;Dash: double tap left or right&#10;Attack (combo): Z&#10;Magic (uses gauge): X&#10;Charge gauge: hold C&#10;Ultimate (full gauge): V&#10;Pause: Esc" />
+                <ui:Button name="controls-back-button" text="Back" class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="end-screen" class="screen overlay hidden">
+            <ui:VisualElement class="menu-box">
+                <ui:Label name="end-title" text="DEFEATED" class="menu-title" />
+                <ui:Label name="end-subtitle" text="" class="menu-subtitle" />
+                <ui:Button name="retry-button" text="Retry" class="menu-button" />
+                <ui:Button name="end-menu-button" text="Main Menu" class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
