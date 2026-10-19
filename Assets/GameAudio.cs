@@ -68,6 +68,8 @@ public class GameAudio : MonoBehaviour
     [Tooltip("When healed: the player picking up a health orb, the boss starting a heal. Never cuts off another line.")]
     [SerializeField] private SoundEffect healLine = new SoundEffect();
     [SerializeField] private SoundEffect defeatLine = new SoundEffect();
+    [Tooltip("A line that has to wait for a more important one (e.g. the teleport line during the phase 2 line) is dropped if it would start later than this many seconds.")]
+    [SerializeField] private float queuedLineMaxWait = 4f;
 
     [Header ("Low Health")]
     [Tooltip("The low health line and sound play when health first drops to this fraction (0.25 = 25%).")]
@@ -77,6 +79,8 @@ public class GameAudio : MonoBehaviour
     [SerializeField] private SoundEffect lowHealthLine = new SoundEffect();
     [Tooltip("Non-voice audio for low health (e.g. a warning beep or heartbeat), played alongside the line.")]
     [SerializeField] private SoundEffect lowHealthSound = new SoundEffect();
+    [Tooltip("On: the Low Health Sound loops (e.g. a heartbeat) for as long as health stays at or below Low Health At. Off: it plays once.")]
+    [SerializeField] private bool loopLowHealthSound = true;
 
     [Header ("Sound Effects")]
     [SerializeField] private SoundEffect jumpSound = new SoundEffect();
@@ -114,12 +118,21 @@ public class GameAudio : MonoBehaviour
     private Health[] opponents = new Health[0];
     private AudioSource voice;
     private AudioSource loop;
+    private AudioSource lowHealthLoop;
     private AudioSource musicCurrent, musicPrevious;
     private AudioClip wantedMusic;
     private float musicFade = 1f;
     private bool won;
     private bool lowHealthPlayed;
     private float lastHealth;
+
+    // Voice line priorities (see Say)
+    private const int GruntPriority = 0, NormalPriority = 1, PhasePriority = 2, FinalPriority = 3;
+    private int currentPriority;
+    private AudioClip queuedClip;
+    private float queuedVolume;
+    private int queuedPriority;
+    private float queuedUntil;
 
     // Plays a menu sound (button click, pause, boss bar) from whichever Game Audio has that slot filled
     public static void Play(UISound sound)
@@ -174,6 +187,7 @@ public class GameAudio : MonoBehaviour
 
         voice = CreateSource(false);
         loop = CreateSource(true);
+        lowHealthLoop = CreateSource(true);
         musicCurrent = CreateSource(false);
         musicPrevious = CreateSource(false);
 
@@ -261,6 +275,7 @@ public class GameAudio : MonoBehaviour
     void Update()
     {
         UpdateMusic();
+        UpdateVoiceQueue();
     }
 
     // ---------- Music ----------
@@ -365,7 +380,7 @@ public class GameAudio : MonoBehaviour
 
     private void OnUltimate() { Say(ultimateLine); }
     private void OnTeleport() { Say(teleportLine); }
-    private void OnPhase2() { Say(phase2Line); }
+    private void OnPhase2() { Say(phase2Line, PhasePriority); } // beats the teleport line that comes right after it
     private void OnBossHeal() { Say(healLine); }
     private void OnShockwave() { Say(shockwaveLine); }
 
@@ -381,19 +396,42 @@ public class GameAudio : MonoBehaviour
         {
             lowHealthPlayed = true;
             Say(lowHealthLine);
-            lowHealthSound.Play();
+            if (!loopLowHealthSound)
+            {
+                lowHealthSound.Play();
+            }
         }
         else if (change < 0f)
         {
-            Say(hurtLine, interrupt: false);
+            Say(hurtLine, GruntPriority);
         }
         else if (change > 0f && ownBoss == null)
         {
-            Say(healLine, interrupt: false); // the boss heals gradually, so its line plays from OnBossHeal instead
+            Say(healLine, GruntPriority); // the boss heals gradually, so its line plays from OnBossHeal instead
         }
+        UpdateLowHealthLoop(h.Fraction <= lowHealthAt);
         if (lowHealthPlayed && h.Fraction > lowHealthAt + lowHealthResetMargin)
         {
             lowHealthPlayed = false; // healed back up: ready to warn again
+        }
+    }
+
+    // Starts the looping low health sound when health is low, stops it when it isn't
+    private void UpdateLowHealthLoop(bool low)
+    {
+        if (!loopLowHealthSound || lowHealthSound.clip == null)
+        {
+            return;
+        }
+        if (low && !lowHealthLoop.isPlaying)
+        {
+            lowHealthLoop.clip = lowHealthSound.clip;
+            lowHealthLoop.volume = lowHealthSound.volume * SoundPlayer.MasterVolume;
+            lowHealthLoop.Play();
+        }
+        else if (!low && lowHealthLoop.isPlaying)
+        {
+            lowHealthLoop.Stop();
         }
     }
 
@@ -401,7 +439,9 @@ public class GameAudio : MonoBehaviour
     {
         StopAllCoroutines(); // no battle line or victory after going down
         loop.Stop();
-        Say(defeatLine);
+        UpdateLowHealthLoop(false);
+        queuedClip = null; // nothing waiting gets said after going down
+        Say(defeatLine, FinalPriority);
     }
 
     private void OnOpponentDefeated(Health h)
@@ -429,7 +469,9 @@ public class GameAudio : MonoBehaviour
             yield break;
         }
         body.Celebrate(winAnimation);
-        Say(victoryLine);
+        UpdateLowHealthLoop(false); // won: no more heartbeat
+        queuedClip = null;
+        Say(victoryLine, FinalPriority);
     }
 
     private IEnumerator SayAfter(SoundEffect line, float delay)
@@ -444,11 +486,15 @@ public class GameAudio : MonoBehaviour
         }
     }
 
-    // Plays a line on this character's voice, cutting off whatever it was saying.
-    // interrupt: false = skip it instead if another line is still playing (grunts mustn't cut off real lines)
-    private void Say(SoundEffect line, bool interrupt = true)
+    // Plays a line on this character's voice.
+    //   A line as important or more important than the one playing cuts it off.
+    //   A less important line waits its turn: it plays as soon as the current line ends (if that's within
+    //   Queued Line Max Wait seconds). Only one line waits; a more important one replaces it.
+    //   Grunts (hurt / heal) never cut anything off or wait: they're skipped while another line plays.
+    private void Say(SoundEffect line, int priority = NormalPriority)
     {
-        if (!interrupt && voice.isPlaying)
+        bool busy = voice.isPlaying;
+        if (busy && priority == GruntPriority)
         {
             return;
         }
@@ -457,11 +503,42 @@ public class GameAudio : MonoBehaviour
         {
             return;
         }
+        if (busy && priority < currentPriority)
+        {
+            if (queuedClip == null || priority >= queuedPriority)
+            {
+                queuedClip = picked;
+                queuedVolume = line.volume;
+                queuedPriority = priority;
+                queuedUntil = Time.unscaledTime + queuedLineMaxWait;
+            }
+            return;
+        }
+        PlayVoice(picked, line.volume, priority);
+    }
+
+    private void PlayVoice(AudioClip clip, float volume, int priority)
+    {
+        currentPriority = priority;
         voice.Stop();
-        voice.clip = picked;
-        voice.volume = line.volume * SoundPlayer.MasterVolume;
+        voice.clip = clip;
+        voice.volume = volume * SoundPlayer.MasterVolume;
         voice.pitch = 1f; // voices always play at their recorded speed and pitch (Pitch Variation is ignored here)
         voice.Play();
+    }
+
+    // A waiting line plays once the voice is free (dropped if it waited too long to still make sense)
+    private void UpdateVoiceQueue()
+    {
+        if (queuedClip == null || voice.isPlaying)
+        {
+            return;
+        }
+        if (Time.unscaledTime <= queuedUntil)
+        {
+            PlayVoice(queuedClip, queuedVolume, queuedPriority);
+        }
+        queuedClip = null;
     }
 
     private AudioSource CreateSource(bool looping)

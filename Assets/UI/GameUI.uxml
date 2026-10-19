@@ -33,6 +33,11 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="boss-indicator" class="boss-indicator hidden" picking-mode="Ignore">
+            <ui:VisualElement name="boss-indicator-arrow" class="boss-indicator-arrow" picking-mode="Ignore" />
+            <ui:Label name="boss-indicator-label" text="BOSS" class="boss-indicator-label" picking-mode="Ignore" />
+        </ui:VisualElement>
+
         <ui:VisualElement name="pause-menu" class="screen overlay hidden">
             <ui:VisualElement name="pause-panel" class="menu-box">
                 <ui:Label text="PAUSED" class="menu-title" />

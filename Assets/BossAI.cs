@@ -93,6 +93,10 @@ public class BossAI : CharacterInput
     [SerializeField] private float runningSpeed = 15f;
     [Tooltip("...for at least this long.")]
     [SerializeField] private float runningTime = 0.4f;
+    [Tooltip("After this many casts in a row, the boss must come after the player (land an attack string or shockwave) before it can cast again.")]
+    [SerializeField, Min(1)] private int maxMagicInARow = 2;
+    [Tooltip("...or until it has spent this many seconds chasing without casting (in case it can't reach the player).")]
+    [SerializeField] private float magicLockoutTime = 6f;
 
     [Header ("Player Directly Below (world units, body to body)")]
     [Tooltip("The player counts as directly below when their feet are lower than levelTolerance and the sideways gap is at most this.")]
@@ -207,6 +211,9 @@ public class BossAI : CharacterInput
     private UltimateAbility ultimate;
     private bool castStarted;
     private float runningSince = -1f;
+    private int magicInARow; // casts since the last attack string / shockwave
+    private float magicLockoutEnd; // while locked out of magic: when it opens up again
+    private bool MagicAllowed => magicInARow < maxMagicInARow || Time.time >= magicLockoutEnd;
     private float nextShockwaveTime;
     private bool[] teleportUsed = new bool[0]; // which Teleport At Health thresholds have fired
     private bool teleportPending; // a threshold was just crossed: teleport as soon as possible
@@ -475,7 +482,7 @@ public class BossAI : CharacterInput
         // or if that's on cooldown, a shockwave that blasts them out from under the boss
         if (rise < -levelTolerance && gapX <= belowGap)
         {
-            if (caster.IsReady)
+            if (caster.IsReady && MagicAllowed)
             {
                 BeginCast("magic down at the player below");
                 return;
@@ -491,7 +498,7 @@ public class BossAI : CharacterInput
         bool inMagicRange = gap >= magicMinGap && gap <= magicMaxGap;
         bool anyTime = !magicOnlyWhenRunning || (InPhase2 && phase2MagicAnyTime);
         bool magicWanted = inMagicRange && (PlayerIsRunning || anyTime);
-        if (magicWanted && caster.IsReady)
+        if (magicWanted && caster.IsReady && MagicAllowed)
         {
             BeginCast($"magic (gap {gap:0.0})");
             return;
@@ -562,6 +569,7 @@ public class BossAI : CharacterInput
 
     private void BeginAttack(int presses, string kind)
     {
+        magicInARow = 0; // it came after the player: magic is allowed again
         body.Face(direction); // turn to the player before swinging; facing is locked during the string
         pressesLeft = presses;
         nextPressTime = Time.time;
@@ -880,6 +888,16 @@ public class BossAI : CharacterInput
 
     private void BeginCast(string reason)
     {
+        if (magicInARow >= maxMagicInARow)
+        {
+            magicInARow = 0; // the lockout ran out: a fresh count
+        }
+        magicInARow++;
+        if (magicInARow >= maxMagicInARow)
+        {
+            magicLockoutEnd = Time.time + magicLockoutTime; // that was the last one: chase for a while
+            Log("magic limit reached: pursuing");
+        }
         body.Face(direction);
         magicPressed = true;
         castStarted = false;
@@ -892,6 +910,7 @@ public class BossAI : CharacterInput
 
     private void BeginShockwave()
     {
+        magicInARow = 0;
         shockwaveFired = false;
         timer = Time.time + shockwaveWindup;
         nextShockwaveTime = Time.time + shockwaveCooldown;

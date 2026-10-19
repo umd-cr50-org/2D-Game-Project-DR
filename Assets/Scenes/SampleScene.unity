@@ -1986,6 +1986,8 @@ MonoBehaviour:
   magicOnlyWhenRunning: 0
   runningSpeed: 15
   runningTime: 0.4
+  maxMagicInARow: 2
+  magicLockoutTime: 6
   belowGap: 4
   shockwaveReach: 12
   shockwaveWindup: 0.25
@@ -2338,7 +2340,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   teleportLine:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 8386238759069b84dbf4e8671e401bf0, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2346,7 +2348,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   phase2Line:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 217be268725ae1d45b4a424295088e3c, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2354,7 +2356,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   shockwaveLine:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 16f4baaf1d6f9f44499e19de6e280d0d, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2370,25 +2372,28 @@ MonoBehaviour:
     chance: 1
     maxPlays: 40
   healLine:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 01213bfb85dc2eb4fb4a2d8a3e3eaf51, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
-    cooldown: 0
+    cooldown: 5.13
     chance: 1
     maxPlays: 0
   defeatLine:
     clip: {fileID: 8300000, guid: cdbf030acf3c744419c0fba94f8f7f44, type: 3}
-    variations: []
+    variations:
+    - {fileID: 8300000, guid: 11f7c94ae8ba4514d8ebfdb69e1ce7e1, type: 3}
+    - {fileID: 8300000, guid: cdbf030acf3c744419c0fba94f8f7f44, type: 3}
     volume: 1
     pitchVariation: 0.05
     cooldown: 0
     chance: 1
     maxPlays: 0
+  queuedLineMaxWait: 4
   lowHealthAt: 0.25
   lowHealthResetMargin: 0.15
   lowHealthLine:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 8386238759069b84dbf4e8671e401bf0, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2403,6 +2408,7 @@ MonoBehaviour:
     cooldown: 0
     chance: 1
     maxPlays: 0
+  loopLowHealthSound: 1
   jumpSound:
     clip: {fileID: 8300000, guid: 48b080fb0f90b2044ad77fb86b83a65b, type: 3}
     variations: []
@@ -2449,7 +2455,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   attackHitSounds:
-  - clip: {fileID: 0}
+  - clip: {fileID: 8300000, guid: d718198660bc40346a973908ad9f06c6, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2486,7 +2492,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   magicFireSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 9e30c868f17a7c849b5b613811efae51, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2494,7 +2500,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   magicImpactSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 92f18bc8837f29e4586e6fe3e1acb15e, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2502,7 +2508,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   chargeStartSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 76a5f0278a235c3419323a2c97c8f7b4, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -2510,7 +2516,7 @@ MonoBehaviour:
     chance: 1
     maxPlays: 0
   chargeLoopSound:
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: d787a2474e0795644afbfa7e3ae94bbb, type: 3}
     variations: []
     volume: 1
     pitchVariation: 0.05
@@ -5408,6 +5414,7 @@ GameObject:
   - component: {fileID: 1690322787}
   - component: {fileID: 1690322789}
   - component: {fileID: 1690322790}
+  - component: {fileID: 1690322791}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5577,9 +5584,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   walkspeed: 31.7
   spriteFacesRight: 0
-  dashDistance: 30
+  dashDistance: 35
   dashWindup: 0.3
-  dashTravelTime: 1
+  dashTravelTime: 0.5
   dashCooldown: 2
   doubleTapWindow: 1
   dashMomentumDecay: 50
@@ -5803,6 +5810,294 @@ MonoBehaviour:
   endAnimation: Player_Idle
   warningColor: {r: 0.4, g: 0.75, b: 1, a: 0.25}
   blastColor: {r: 0.7, g: 0.9, b: 1, a: 0.85}
+--- !u!114 &1690322791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1690322778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45c6b9e5ebc4ba84c90f3d9f0a7d417c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameAudio
+  startingMusic: {fileID: 8300000, guid: 9d48e46a0de74544584b80d44f1a3e2f, type: 3}
+  bossMusic: {fileID: 8300000, guid: 444a0a32a0aa735468be435ab6dfced6, type: 3}
+  phase2Music: {fileID: 0}
+  victoryMusic: {fileID: 0}
+  defeatMusic: {fileID: 0}
+  musicVolume: 0.6
+  pausedMusicVolume: 0.4
+  musicFadeTime: 1.5
+  buttonClickSound:
+    clip: {fileID: 8300000, guid: 19490d1a5e961b74cbc651b96f614fb8, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  pauseSound:
+    clip: {fileID: 8300000, guid: 6528d45f203e3524393d9b7f57d01fc5, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  bossBarSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  orbDropSound:
+    clip: {fileID: 8300000, guid: b13f1fb93f685754e958e162ec8b7224, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  orbPickupSound:
+    clip: {fileID: 8300000, guid: 7d46edb76792021428dd4a52b7d8fd9a, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  winAnimation: Player_Win
+  victoryDelay: 0.6
+  victoryLine:
+    clip: {fileID: 8300000, guid: ed90538d2c5d69a4ca19883d298ddb44, type: 3}
+    variations:
+    - {fileID: 8300000, guid: efefb7c1c3605ea4a8776a6300786f4b, type: 3}
+    - {fileID: 0}
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  battleStartLine:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  battleStartDelay: 2
+  ultimateLine:
+    clip: {fileID: 8300000, guid: 5b472d0262f907843b2e5e7484da9b0c, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  teleportLine:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  phase2Line:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  shockwaveLine:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  hurtLine:
+    clip: {fileID: 8300000, guid: bc38589a978f41445a9b0974bf70fbe3, type: 3}
+    variations:
+    - {fileID: 8300000, guid: 65dd3839282ce6741a46bbd2afcc4160, type: 3}
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  healLine:
+    clip: {fileID: 8300000, guid: fd781aca245ff94478a819111a16f50c, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  defeatLine:
+    clip: {fileID: 8300000, guid: b9add099b70519046bb469b72d8619ad, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  queuedLineMaxWait: 4
+  lowHealthAt: 0.25
+  lowHealthResetMargin: 0.15
+  lowHealthLine:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  lowHealthSound:
+    clip: {fileID: 8300000, guid: 25e8046bc7468ac4f8e0562648177fbd, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  loopLowHealthSound: 1
+  jumpSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  doubleJumpSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  attackSwingSounds:
+  - clip: {fileID: 8300000, guid: e5b41d32c6b5bc748986c294f7d501ac, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 8300000, guid: 07f27676755fc7742a7260a1fd1dc330, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 2.65
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 8300000, guid: f61d8b6c40efced4e984dfdd6928eab1, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 2.64
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 8300000, guid: 830ecd934c314e742bd91d7db402571e, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 1.63
+    chance: 1
+    maxPlays: 0
+  attackHitSounds:
+  - clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  - clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  magicCastSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  magicFireSound:
+    clip: {fileID: 8300000, guid: 92f18bc8837f29e4586e6fe3e1acb15e, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  magicImpactSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  chargeStartSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  chargeLoopSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  gaugeFullSound:
+    clip: {fileID: 8300000, guid: 77f25e8db81e4a04e8a8439c43640845, type: 3}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
+  ultimateBlastSound:
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    pitchVariation: 0.05
+    cooldown: 0
+    chance: 1
+    maxPlays: 0
 --- !u!1 &1755212591
 GameObject:
   m_ObjectHideFlags: 0

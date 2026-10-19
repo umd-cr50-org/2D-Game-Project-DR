@@ -182,6 +182,31 @@
     opacity: 1;
 }
 
+/* ---------- Boss indicator (off-screen arrow, GameUI moves and rotates it) ---------- */
+
+.boss-indicator {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+}
+
+.boss-indicator-arrow {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+}
+
+.boss-indicator-label {
+    -unity-font-style: bold;
+    font-size: 11px;
+    color: rgb(255, 255, 255);
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
 /* ---------- Menus (pause, end screen, main menu) ---------- */
 
 .overlay {

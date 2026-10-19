@@ -15,6 +15,13 @@ public class GameUI : MonoBehaviour
     [Header ("Boss Bar")]
     [SerializeField] private string bossDisplayName = "Enemy Boss";
 
+    [Header ("Boss Indicator (off-screen arrow)")]
+    [Tooltip("Once the battle starts, an arrow at the screen edge points to the boss whenever it's off-screen.")]
+    [SerializeField] private bool showBossIndicator = true;
+    [SerializeField] private Color indicatorColor = new Color(1f, 0.25f, 0.2f);
+    [Tooltip("Distance of the arrow from the screen edge (UI pixels).")]
+    [SerializeField] private float indicatorEdgeMargin = 48f;
+
     [Header ("Bars")]
     [Tooltip("Health below this fraction turns the player's bar red.")]
     [SerializeField, Range(0f, 1f)] private float lowHealthAt = 0.3f;
@@ -40,6 +47,8 @@ public class GameUI : MonoBehaviour
     private VisualElement playerHealthFill, playerHealthTrail, specialBar, specialFill;
     private Label playerHealthText, specialText;
     private VisualElement bossPanel, bossHealthFill, bossHealthTrail, phaseMarker, bossMeterBar, bossMeterFill;
+    private VisualElement uiRoot, bossIndicator, bossIndicatorArrow;
+    private Collider2D bossCollider;
     private VisualElement pauseMenu, pausePanel, controlsPanel, endScreen;
     private Label endTitle, endSubtitle;
     private Button resumeButton, retryButton, controlsBackButton;
@@ -66,6 +75,11 @@ public class GameUI : MonoBehaviour
         phaseMarker = root.Q("boss-phase-marker");
         bossMeterBar = root.Q("boss-meter-bar");
         bossMeterFill = root.Q("boss-meter-fill");
+        uiRoot = root;
+        bossIndicator = root.Q("boss-indicator");
+        bossIndicatorArrow = root.Q("boss-indicator-arrow");
+        bossIndicatorArrow.style.backgroundImage = new StyleBackground(CreateArrowTexture());
+        bossIndicatorArrow.style.unityBackgroundImageTintColor = indicatorColor;
         pauseMenu = root.Q("pause-menu");
         pausePanel = root.Q("pause-panel");
         controlsPanel = root.Q("controls-panel");
@@ -104,6 +118,7 @@ public class GameUI : MonoBehaviour
         // The boss
         boss = FindAnyObjectByType<BossAI>();
         bossHealth = boss != null ? boss.GetComponent<Health>() : null;
+        bossCollider = boss != null ? boss.GetComponent<Collider2D>() : null;
         bossMeter = boss != null ? boss.GetComponent<SpecialMeter>() : null;
         bossMeterBar.style.display = bossMeter != null ? DisplayStyle.Flex : DisplayStyle.None;
         root.Q<Label>("boss-name").text = bossDisplayName;
@@ -146,6 +161,7 @@ public class GameUI : MonoBehaviour
 
         UpdatePlayerBars();
         UpdateBossBar();
+        UpdateBossIndicator();
     }
 
     private void UpdatePlayerBars()
@@ -211,6 +227,86 @@ public class GameUI : MonoBehaviour
         {
             trail = Mathf.MoveTowards(trail, fraction, trailSpeed * Time.deltaTime);
         }
+    }
+
+    // ---------- Boss indicator ----------
+
+    // Off-screen: the arrow sits on the screen edge (inset by the margin) on the line from the screen center
+    // to the boss, rotated to point at it. On-screen, before the battle, or once it's over: hidden.
+    private void UpdateBossIndicator()
+    {
+        Camera cam = Camera.main;
+        bool active = showBossIndicator && boss != null && cam != null && boss.BattleStarted
+            && (bossHealth == null || !bossHealth.IsDead) && !gameOver;
+        Vector3 bossPoint = bossCollider != null ? bossCollider.bounds.center : (boss != null ? boss.transform.position : Vector3.zero);
+        Vector3 vp = active ? cam.WorldToViewportPoint(bossPoint) : Vector3.zero;
+        bool onScreen = vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f;
+
+        float width = uiRoot.layout.width;
+        float height = uiRoot.layout.height;
+        if (!active || onScreen || float.IsNaN(width) || width <= 0f)
+        {
+            bossIndicator.AddToClassList("hidden");
+            return;
+        }
+        bossIndicator.RemoveFromClassList("hidden");
+
+        // Direction from the screen center to the boss, in UI pixels (UI y points down)
+        if (vp.z < 0f)
+        {
+            vp = -vp; // behind the camera (not normally possible in 2D): flip so the arrow still makes sense
+        }
+        Vector2 center = new Vector2(width * 0.5f, height * 0.5f);
+        Vector2 toBoss = new Vector2(vp.x * width, (1f - vp.y) * height) - center;
+        if (toBoss.sqrMagnitude < 0.01f)
+        {
+            toBoss = Vector2.right;
+        }
+
+        // Slide out along that line until it meets the inset screen edge
+        float halfW = Mathf.Max(center.x - indicatorEdgeMargin, 1f);
+        float halfH = Mathf.Max(center.y - indicatorEdgeMargin, 1f);
+        float scale = Mathf.Min(
+            Mathf.Abs(toBoss.x) > 0.001f ? halfW / Mathf.Abs(toBoss.x) : float.MaxValue,
+            Mathf.Abs(toBoss.y) > 0.001f ? halfH / Mathf.Abs(toBoss.y) : float.MaxValue);
+        Vector2 pos = center + toBoss * scale;
+
+        float size = bossIndicator.layout.width > 0f ? bossIndicator.layout.width : 64f;
+        bossIndicator.style.left = pos.x - size * 0.5f;
+        bossIndicator.style.top = pos.y - size * 0.5f;
+        float angle = Mathf.Atan2(toBoss.y, toBoss.x) * Mathf.Rad2Deg; // clockwise from pointing right
+        bossIndicatorArrow.style.rotate = new Rotate(angle);
+        bossIndicator.style.opacity = 0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 6f); // gentle pulse
+    }
+
+    // A white arrowhead pointing right (tinted by Indicator Color), generated once
+    private static Texture2D arrowTexture;
+    private static Texture2D CreateArrowTexture()
+    {
+        if (arrowTexture != null)
+        {
+            return arrowTexture;
+        }
+        const int size = 64;
+        arrowTexture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                // Triangle: tip at the right middle, base along the left side (with a soft edge)
+                float u = (x + 0.5f) / size;
+                float v = Mathf.Abs((y + 0.5f) / size - 0.5f) * 2f; // 0 at the middle row, 1 at top/bottom
+                float edge = (1f - u) - v; // > 0 inside the triangle
+                float alpha = Mathf.Clamp01(edge * size * 0.5f);
+                if (u < 0.45f)
+                {
+                    alpha = 0f; // trim the back so it reads as an arrowhead, not a wedge
+                }
+                arrowTexture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+        arrowTexture.Apply();
+        return arrowTexture;
     }
 
     private static void SetWidth(VisualElement element, float fraction)
